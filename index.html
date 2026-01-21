@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Ramo de tulipanes rosados (noche)</title>
+  <title>Ramo de tulipanes (noche)</title>
   <style>
     :root{
       --bg1:#070814;
@@ -23,7 +23,7 @@
   </style>
 </head>
 <body>
-  <canvas id="c"></canvas>
+  <canvas id="c" role="img" aria-label="Animación de un ramo de tulipanes naranjas bajo un cielo nocturno con estrellas, luna y la constelación de Capricornio"></canvas>
 
 <script>
 (() => {
@@ -74,14 +74,58 @@
     crownStrength: 0.008,
 
     // Texto “en estrellas”
-    starText: 'For you <3',
-    starTextStrength: 0.95
+    starText: 'your daily flowers my darling <3',
+    starTextStrength: 0.95    ,
+
+    // Rendimiento / calidad
+    maxFPS: 60,
+    dprCap: 1.8,
+    grassAnimFactor: 1.0,
+    debug: false,
+    quality: 2
+
   };
 
   try{
     const m = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
     if(m && m.matches) CONFIG.reduceMotion = true;
   }catch(_){}
+
+
+// ===== Calidad rápida (Q) y atajos =====
+const QUALITY_PRESETS = [
+  { name: 'baja',  dpr: 1.15, stars: 140, twinkle: 0.65, sway: 0.16, shoot: 0, grass: 0.55, fps: 40 },
+  { name: 'media', dpr: 1.40, stars: 200, twinkle: 0.75, sway: 0.22, shoot: 1, grass: 0.80, fps: 55 },
+  { name: 'alta',  dpr: 1.80, stars: 240, twinkle: 0.80, sway: 0.28, shoot: 1, grass: 1.00, fps: 60 }
+];
+
+function applyQuality(level){
+  const q = QUALITY_PRESETS[clamp(level,0,2)];
+  CONFIG.quality = clamp(level,0,2);
+  CONFIG.dprCap = q.dpr;
+  CONFIG.stars = q.stars;
+  CONFIG.twinkle = q.twinkle;
+  CONFIG.sway = q.sway;
+  CONFIG.shootingStars = q.shoot;
+  CONFIG.grassAnimFactor = q.grass;
+  CONFIG.maxFPS = q.fps;
+  requestResize();
+}
+
+function cycleQuality(){
+  applyQuality((CONFIG.quality ?? 2) === 2 ? 1 : ((CONFIG.quality ?? 2) === 1 ? 0 : 2));
+}
+
+window.addEventListener('keydown', (e) => {
+  const k = (e.key || '').toLowerCase();
+  if(k === 'q'){ cycleQuality(); }
+  if(k === 'm'){
+    CONFIG.reduceMotion = !CONFIG.reduceMotion;
+  }
+  if(k === 's'){
+    CONFIG.shootingStars = CONFIG.shootingStars ? 0 : 1;
+  }
+}, {passive:true});
 
   // ===== Stars =====
   const stars = [];
@@ -364,8 +408,10 @@
     shuffleInPlace(g1);
     shuffleInPlace(g2);
 
-    const max1 = clamp(Math.floor(W * 0.55), 200, 650);
-    const max2 = clamp(Math.floor(W * 0.40), 160, 520);
+    const gf = (CONFIG.grassAnimFactor ?? 1.0);
+
+    const max1 = clamp(Math.floor(W * 0.55 * gf), 200, 650);
+    const max2 = clamp(Math.floor(W * 0.40 * gf), 160, 520);
 
     grassAnim1.push(...g1.slice(0, max1));
     grassAnim2.push(...g2.slice(0, max2));
@@ -640,7 +686,7 @@
     textStars.length = 0;
 
     const sMin = Math.min(W, H);
-    const fontSize = clamp(sMin * 0.09, 26, 58);
+    let fontSize = clamp(sMin * 0.09, 26, 58);
 
     const tc = document.createElement('canvas');
     tc.width = Math.floor(W);
@@ -654,6 +700,14 @@
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.font = `700 ${Math.round(fontSize)}px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+
+    const maxW = tc.width * 0.92;
+    const mt = g.measureText(CONFIG.starText);
+    if(mt.width > maxW){
+      fontSize = clamp(fontSize * (maxW / mt.width), 18, fontSize);
+      g.font = `700 ${Math.round(fontSize)}px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+    }
+
     g.fillStyle = 'rgba(255,255,255,1)';
     g.fillText(CONFIG.starText, x, y);
 
@@ -823,6 +877,93 @@
     ctx.restore();
   }
 
+
+
+  // ===== Constelación específica: Capricornio (estilizada, en el fondo) =====
+  function drawCapricornConstellationToCache(g){
+    // Coordenadas normalizadas (0..1) para que escale con el canvas.
+    // No es un atlas astronómico: es una silueta bonita y reconocible.
+    const P = [
+      {x:0.18, y:0.22, m:1.25},
+      {x:0.27, y:0.16, m:1.10},
+      {x:0.37, y:0.19, m:1.20},
+      {x:0.45, y:0.25, m:1.05},
+      {x:0.37, y:0.30, m:1.00},
+      {x:0.29, y:0.29, m:0.95},
+      {x:0.21, y:0.30, m:0.90},
+      {x:0.24, y:0.36, m:0.85}
+    ];
+
+    const E = [
+      [0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,0],
+      [5,7],[7,4]
+    ];
+
+    const toX = (p)=>p.x*W;
+    const toY = (p)=>p.y*H;
+
+    g.save();
+    g.globalCompositeOperation = 'screen';
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+
+    // Bruma suave detrás para integrarlo (muy sutil)
+    const cx = W*0.30, cy = H*0.25;
+    const haze = g.createRadialGradient(cx, cy, 10, cx, cy, Math.min(W,H)*0.22);
+    haze.addColorStop(0, 'rgba(200,220,255,0.06)');
+    haze.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = haze;
+    g.fillRect(0,0,W,H);
+
+    // Líneas
+    g.strokeStyle = 'rgba(200,220,255,1)';
+    g.lineWidth = 1.15;
+    g.globalAlpha = 0.14;
+
+    for(const [a,b] of E){
+      const A = P[a], B = P[b];
+      const ax = toX(A), ay = toY(A);
+      const bx = toX(B), by = toY(B);
+
+      // evita ensuciar zona baja
+      if(ay > H*0.62 || by > H*0.62) continue;
+
+      g.beginPath();
+      g.moveTo(ax, ay);
+      g.lineTo(bx, by);
+      g.stroke();
+    }
+
+    // Estrellas (puntos + glow)
+    for(const p of P){
+      const x = toX(p), y = toY(p);
+      if(y > H*0.62) continue;
+
+      const r = 1.15 + p.m*0.95;
+      const glowR = 14 + p.m*12;
+
+      g.globalAlpha = 0.20 + p.m*0.06;
+      const rg = g.createRadialGradient(x,y, 0, x,y, glowR);
+      rg.addColorStop(0, 'rgba(255,255,255,0.24)');
+      rg.addColorStop(0.35, 'rgba(210,230,255,0.10)');
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg;
+      g.beginPath();
+      g.arc(x,y, glowR, 0, TAU);
+      g.fill();
+
+      g.globalAlpha = 0.55;
+      g.shadowColor = 'rgba(255,255,255,0.35)';
+      g.shadowBlur = 10 + p.m*6;
+      g.fillStyle = 'rgba(255,255,255,1)';
+      g.beginPath();
+      g.arc(x,y, r, 0, TAU);
+      g.fill();
+      g.shadowBlur = 0;
+    }
+
+    g.restore();
+  }
 
   function rebuildSkyCache(){
     const off = document.createElement('canvas');
@@ -1018,6 +1159,8 @@
     }
     g.restore();
 
+    drawCapricornConstellationToCache(g);
+
     const mx = W*0.80, my = H*0.14;
     const moon = g.createRadialGradient(mx, my, 10, mx, my, Math.max(W,H)*0.55);
     moon.addColorStop(0, 'rgba(245,250,255,0.12)');
@@ -1034,7 +1177,7 @@
 
     // Glow difuminado detrás del texto
     const sMin = Math.min(W, H);
-    const fontSize = clamp(sMin * 0.09, 26, 58);
+    let fontSize = clamp(sMin * 0.09, 26, 58);
     g.save();
     g.globalCompositeOperation = 'screen';
     g.globalAlpha = 0.10;
@@ -1044,6 +1187,14 @@
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.font = `700 ${Math.round(fontSize)}px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+    const maxW = W * 0.92;
+    const mt = g.measureText(CONFIG.starText);
+    if(mt.width > maxW){
+      fontSize = clamp(fontSize * (maxW / mt.width), 18, fontSize);
+      g.shadowBlur = fontSize * 0.95;
+      g.font = `700 ${Math.round(fontSize)}px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+    }
+
     g.fillText(CONFIG.starText, W*0.5, H*0.28);
     g.restore();
 
@@ -1069,7 +1220,6 @@
   }
 
   function drawSky(t){
-    ctx.clearRect(0,0,W,H);
 
     if(skyCache){
       ctx.drawImage(skyCache, 0, 0, skyCache.width / DPR, skyCache.height / DPR);
@@ -1701,12 +1851,12 @@
     {dx: 0.00, hf:0.86, bs:0.98},
   ];
   const COLORS = [
-    // Violetas (variación sutil para que no se vea plano)
-    { r: 124, g:  58, b: 237 }, // violet intenso
-    { r: 147, g:  97, b: 255 }, // violeta brillante
-    { r: 104, g:  48, b: 200 }, // deep violet
-    { r: 173, g: 132, b: 255 }, // lavender violeta
-    { r:  90, g:  42, b: 170 }, // plum violeta
+    // Naranjas (variación sutil para pétalos cálidos)
+    { r: 255, g: 122, b:  48 }, // naranja mandarina
+    { r: 255, g:  98, b:  32 }, // naranja intenso
+    { r: 255, g: 156, b:  74 }, // naranja ámbar
+    { r: 240, g:  92, b:  24 }, // calabaza
+    { r: 255, g: 196, b: 120 }, // durazno suave
   ];
 
   let bouquet = [];
@@ -1960,7 +2110,7 @@ for(const f of bloomOrder){
 
 
   function resize(){
-    DPR = Math.min(1.8, window.devicePixelRatio || 1);
+    DPR = Math.min(CONFIG.dprCap || 1.8, window.devicePixelRatio || 1);
     W = Math.floor(window.innerWidth);
     H = Math.floor(window.innerHeight);
 
@@ -1984,10 +2134,14 @@ for(const f of bloomOrder){
     for(const f of bouquet){
       getBloomSprite(f.bw, f.bh, f.col, f.seed, f.open);
     }
-
-    selfTest();
+    if(CONFIG.debug) selfTest();
   }
-  window.addEventListener('resize', resize, {passive:true});
+  var _resizeRaf = 0;
+  function requestResize(){
+    if(_resizeRaf) cancelAnimationFrame(_resizeRaf);
+    _resizeRaf = requestAnimationFrame(()=>{ _resizeRaf = 0; resize(); });
+  }
+  window.addEventListener('resize', requestResize, {passive:true});
 
   canvas.addEventListener('pointerdown', (e) => {
     const r = canvas.getBoundingClientRect();
@@ -2024,17 +2178,41 @@ for(const f of bloomOrder){
     const spr = getBloomSprite(60, 100, {r:235,g:55,b:70}, 42, 0.95);
     console.assert(spr && spr.canvas && spr.ss === 2 && spr.canvas.width>0, 'Sprite inválido');
   }
+  requestResize();
 
-  seedStars();
-  resize();
+  let _rafId = 0;
+let _lastDraw = 0;
 
-  function frame(t){
-    requestAnimationFrame(frame);
-    drawSky(t);
-    drawBouquet(t);
-    drawTapSparkles(t);
-  }
-  requestAnimationFrame(frame);
+function frame(t){
+  _rafId = requestAnimationFrame(frame);
+
+  const minStep = 1000 / (CONFIG.maxFPS || 60);
+  if(_lastDraw && (t - _lastDraw) < minStep) return;
+  _lastDraw = t;
+
+  drawSky(t);
+  drawBouquet(t);
+  drawTapSparkles(t);
+}
+
+function start(){
+  if(_rafId) return;
+  _lastDraw = 0;
+  _rafId = requestAnimationFrame(frame);
+}
+
+function stop(){
+  if(!_rafId) return;
+  cancelAnimationFrame(_rafId);
+  _rafId = 0;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) stop();
+  else start();
+}, {passive:true});
+
+start();
 })();
 </script>
 </body>
