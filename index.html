@@ -50,13 +50,13 @@
       background: rgba(255,255,255,0.10);
       font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
+  
+    #hud{display:none !important;}
   </style>
 </head>
 <body>
   <canvas id="c" role="img" aria-label="Animación de un ramo de tulipanes naranjas bajo un cielo nocturno con estrellas, luna y la constelación de Capricornio"></canvas>
-  <div id="hud" aria-hidden="true"></div>
-
-<script>
+  <script>
 (() => {
   'use strict';
 
@@ -147,7 +147,7 @@ function restartIntro(){
     crownStrength: 0.008,
 
     // Texto “en estrellas”
-    starText: 'your daily flowers my darling <3',
+    starText: 'hoy te veías muy bonita <3',
     starTextStrength: 0.95    ,
 
     // Rendimiento / calidad
@@ -156,7 +156,7 @@ function restartIntro(){
     grassAnimFactor: 1.0,
     debug: false,
     quality: 2,
-    hud: true,
+    hud: false,
     autoQuality: true
 
   };
@@ -2224,12 +2224,12 @@ window.addEventListener('keydown', (e) => {
     {dx: 0.00, hf:0.86, bs:0.98},
   ];
   const COLORS = [
-    // Naranjas (variación sutil para pétalos cálidos)
-    { r: 255, g: 122, b:  48 }, // naranja mandarina
-    { r: 255, g:  98, b:  32 }, // naranja intenso
-    { r: 255, g: 156, b:  74 }, // naranja ámbar
-    { r: 240, g:  92, b:  24 }, // calabaza
-    { r: 255, g: 196, b: 120 }, // durazno suave
+    // Rojos (variación sutil para pétalos intensos)
+    { r: 214, g:  44, b:  56 }, // carmesí
+    { r: 189, g:  27, b:  45 }, // rojo profundo
+    { r: 232, g:  66, b:  76 }, // rojo coral
+    { r: 160, g:  18, b:  40 }, // vino
+    { r: 255, g: 120, b: 130 }, // rosa rojizo suave
   ];
 
   let bouquet = [];
