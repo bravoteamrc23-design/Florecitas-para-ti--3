@@ -186,7 +186,7 @@ function restartIntro(){
     crownStrength: 0.008,
 
     // Texto “en estrellas”
-    starText: 'new kind of flowers for you my darling <3',
+    starText: 'your daily flowers my darling <3',
     starTextStrength: 0.95    ,
 
     // Rendimiento / calidad
@@ -307,6 +307,8 @@ function exportPNG(filename){
     CONFIG.reduceMotion = true;
 
     drawSky(t);
+    rebuildFieldCache();
+    if(fieldCache){ ctx.drawImage(fieldCache, 0, 0, fieldCache.width / DPR, fieldCache.height / DPR); }
     drawBouquet(t);
     drawTapSparkles(t);
 
@@ -580,6 +582,10 @@ window.addEventListener('keydown', (e) => {
   let groundCache = null;
   let skyCache = null;
   let staticSkyOverlayCache = null;
+  let fieldCache = null;
+  let fieldCacheKey = '';
+  let bushCache = null;
+  let bushCacheKey = '';
   const bloomCache = new Map();
 
 // ===== Luna (cache + generación) =====
@@ -966,12 +972,361 @@ function drawMoon(t){
 
     groundCache = off;
   }
+  function rebuildFieldCache(){
+    // Campo/montañas de fondo (v3):
+    // - Montañas lejanas con picos (ridged noise)
+    // - Niebla/atmosfera por capas
+    // - Colinas medias con rim light + sombras + textura
+    // - Pasto y mini-flores como antes
+    // Cacheado para rendimiento.
+    const q = CONFIG.quality || 2;
+    const key = `${W}x${H}@d${DPR.toFixed(2)}@q${q}`;
+    if(fieldCache && fieldCacheKey === key) return;
+    fieldCacheKey = key;
+
+    const off = document.createElement('canvas');
+    off.width  = Math.floor(W * DPR);
+    off.height = Math.floor(H * DPR);
+    const g = off.getContext('2d', {alpha:true});
+    g.setTransform(DPR,0,0,DPR,0,0);
+
+    // PRNG estable
+    let s = ((W*912367) ^ (H*12347) ^ ((q+1)*918273)) >>> 0;
+    const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
+
+    const topBand = H*0.56;   // inicio del campo (deja cielo arriba)
+    const midBand = H*0.70;
+
+    // Base del campo (gradiente)
+    const base = g.createLinearGradient(0, topBand, 0, H);
+    base.addColorStop(0, 'rgba(7,18,14,0.18)');
+    base.addColorStop(0.30, 'rgba(16,56,34,0.44)');
+    base.addColorStop(0.70, 'rgba(12,46,30,0.66)');
+    base.addColorStop(1, 'rgba(6,22,14,0.86)');
+    g.fillStyle = base;
+    g.fillRect(0, topBand, W, H-topBand);
+
+    // Helper: contorno con “bulto” central (zona del ramo)
+    const ridgeY = H*0.62;
+
+    // Ridged noise: crea picos más “montaña” (no solo ondas suaves)
+    const ridged = (x, freq, phase, power=0.35) => {
+      const v = Math.abs(Math.sin(x*freq + phase));
+      return Math.pow(v, power);
+    };
+
+    // Perfil base (con peak central) + ondas + ridged peaks
+    const profile = (x, yEdge, yPeak, wav, bump, seedShift, jag=0.0) => {
+      const xn = (x / W) - 0.5;
+      const peak = yPeak - Math.exp(-(xn*xn)/(bump*bump)) * (yEdge - yPeak);
+
+      const w1 = Math.sin(xn*(6.0+seedShift) + 0.8) * wav;
+      const w2 = Math.sin(xn*(13.5+seedShift*1.1) - 0.4) * (wav*0.46);
+      const w3 = Math.sin(xn*(22.0+seedShift*1.7) + 1.1) * (wav*0.22);
+
+      // Ridged term for jagged peaks (mountains)
+      const r1 = (ridged(xn, 10.0+seedShift*1.2, 0.7+seedShift*0.9) - 0.55) * (wav*2.4) * jag;
+      const r2 = (ridged(xn, 19.0+seedShift*1.6, 1.2-seedShift*0.4) - 0.55) * (wav*1.4) * jag;
+
+      return peak + w1 + w2 + w3 + r1 + r2;
+    };
+
+    // Montañas lejanas (más arriba, tono azulado/oscuro)
+    const mountains = [
+      {yEdge: H*0.60, yPeak: H*0.54, wav: H*0.020, bump:0.62, a:0.22, seed:1.1, jag:0.85, tint:[22,40,54]},
+      {yEdge: H*0.63, yPeak: H*0.56, wav: H*0.026, bump:0.56, a:0.26, seed:2.0, jag:0.95, tint:[16,34,46]},
+      {yEdge: H*0.66, yPeak: H*0.58, wav: H*0.030, bump:0.52, a:0.30, seed:2.9, jag:1.00, tint:[10,26,36]},
+    ];
+
+    for(let k=0;k<mountains.length;k++){
+      const M = mountains[k];
+      const steps = 92;
+      const pts = [];
+
+      // Gradient for mountain body
+      const grad = g.createLinearGradient(0, M.yPeak-40, 0, M.yEdge+140);
+      grad.addColorStop(0, `rgba(${M.tint[0]},${M.tint[1]},${M.tint[2]},0.78)`);
+      grad.addColorStop(1, `rgba(0,0,0,0.62)`);
+
+      g.save();
+      g.globalAlpha = M.a;
+      g.fillStyle = grad;
+
+      g.beginPath();
+      g.moveTo(0, H);
+      for(let i=0;i<=steps;i++){
+        const x = (i/steps)*W;
+        const y = profile(x, M.yEdge, M.yPeak, M.wav, M.bump, M.seed, M.jag);
+        pts.push({x,y});
+        g.lineTo(x, y);
+      }
+      g.lineTo(W, H);
+      g.closePath();
+      g.fill();
+      g.restore();
+
+      // Crevices: líneas oscuras sutiles (como “pliegues”)
+      if(q >= 2){
+        g.save();
+        g.globalAlpha = 0.08 + 0.02*k;
+        g.strokeStyle = 'rgba(0,0,0,0.55)';
+        g.lineWidth = 1.0;
+        g.lineCap = 'round';
+
+        // Clip dentro de la montaña
+        g.beginPath();
+        g.moveTo(0, H);
+        for(const p of pts) g.lineTo(p.x, p.y);
+        g.lineTo(W, H);
+        g.closePath();
+        g.clip();
+
+        const lines = 26 + k*10;
+        for(let n=0;n<lines;n++){
+          const x0 = rnd()*W;
+          const yTop = profile(x0, M.yEdge, M.yPeak, M.wav, M.bump, M.seed, M.jag);
+          const y0 = yTop + rnd()*((M.yEdge+160)-yTop);
+          const dx = (rnd()*2-1) * W*0.02;
+          const dy = (0.10 + rnd()*0.55) * H*0.10;
+
+          g.beginPath();
+          g.moveTo(x0, y0);
+          g.quadraticCurveTo(x0 + dx*0.6, y0 + dy*0.4, x0 + dx, y0 + dy);
+          g.stroke();
+        }
+        g.restore();
+      }
+
+      // Rim light (luna): borde iluminado
+      g.save();
+      g.globalCompositeOperation = 'screen';
+      g.globalAlpha = 0.10 + 0.04*k;
+      g.strokeStyle = 'rgba(210,240,255,0.22)';
+      g.lineWidth = 1.3;
+      g.lineJoin = 'round';
+      g.lineCap = 'round';
+      g.beginPath();
+      for(let i=0;i<pts.length;i++){
+        const p = pts[i];
+        if(i===0) g.moveTo(p.x, p.y);
+        else g.lineTo(p.x, p.y);
+      }
+      g.stroke();
+      g.restore();
+    }
+
+    // Niebla atmosférica: separa montañas del campo
+    g.save();
+    g.globalCompositeOperation = 'screen';
+    g.globalAlpha = 0.22;
+    const fog = g.createLinearGradient(0, topBand-30, 0, topBand+160);
+    fog.addColorStop(0, 'rgba(0,0,0,0)');
+    fog.addColorStop(0.35, 'rgba(30,60,70,0.18)');
+    fog.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = fog;
+    g.fillRect(0, topBand-40, W, 220);
+    g.restore();
+
+    // Colinas medias (más verdes, detrás del arbusto)
+    const layers = [
+      {yEdge: H*0.66, yPeak: ridgeY-20, wav: H*0.016, bump:0.52, a:0.20, sat:0.62, seed:0.8},
+      {yEdge: H*0.69, yPeak: ridgeY-16, wav: H*0.020, bump:0.50, a:0.25, sat:0.70, seed:1.4},
+      {yEdge: H*0.72, yPeak: ridgeY-12, wav: H*0.026, bump:0.46, a:0.31, sat:0.82, seed:2.0},
+      {yEdge: H*0.75, yPeak: ridgeY- 6, wav: H*0.034, bump:0.42, a:0.37, sat:0.94, seed:2.7},
+      {yEdge: H*0.79, yPeak: ridgeY+ 4, wav: H*0.046, bump:0.38, a:0.43, sat:1.06, seed:3.3},
+    ];
+
+    for(let k=0;k<layers.length;k++){
+      const L = layers[k];
+      const col = g.createLinearGradient(0, topBand, 0, H);
+      col.addColorStop(0, `rgba(30,110,70,${0.07*L.sat})`);
+      col.addColorStop(0.55, `rgba(16,70,44,${0.24*L.sat})`);
+      col.addColorStop(1, `rgba(4,18,12,${0.46*L.sat})`);
+
+      g.save();
+      g.globalAlpha = L.a;
+      g.fillStyle = col;
+
+      g.beginPath();
+      g.moveTo(0, H);
+      const steps = 72;
+      const pts = [];
+      for(let i=0;i<=steps;i++){
+        const x = (i/steps)*W;
+        const y = profile(x, L.yEdge, L.yPeak, L.wav, L.bump, L.seed, 0.0);
+        pts.push({x,y});
+        g.lineTo(x, y);
+      }
+      g.lineTo(W, H);
+      g.closePath();
+      g.fill();
+      g.restore();
+
+      // Sombras internas
+      g.save();
+      g.globalCompositeOperation = 'multiply';
+      g.globalAlpha = 0.12 + 0.06*(k/layers.length);
+      const shade = g.createLinearGradient(0, L.yPeak-20, 0, L.yEdge+90);
+      shade.addColorStop(0, 'rgba(0,0,0,0)');
+      shade.addColorStop(1, 'rgba(0,0,0,0.45)');
+      g.fillStyle = shade;
+      g.beginPath();
+      g.moveTo(0, H);
+      for(const p of pts) g.lineTo(p.x, p.y);
+      g.lineTo(W, H);
+      g.closePath();
+      g.fill();
+      g.restore();
+
+      // Rim light
+      g.save();
+      g.globalCompositeOperation = 'screen';
+      g.globalAlpha = 0.07 + 0.05*(k/layers.length);
+      g.strokeStyle = 'rgba(230,255,245,0.22)';
+      g.lineWidth = 1.1 + 0.6*(k/layers.length);
+      g.lineJoin = 'round';
+      g.lineCap = 'round';
+      g.beginPath();
+      for(let i=0;i<pts.length;i++){
+        const p = pts[i];
+        if(i===0) g.moveTo(p.x, p.y);
+        else g.lineTo(p.x, p.y);
+      }
+      g.stroke();
+      g.restore();
+
+      // Textura: motas + micro “contours”
+      const specks = (q>=3?260: q>=2?180:120) * (0.55 + 0.55*(k/layers.length));
+      g.save();
+      g.globalAlpha = 0.05 + 0.04*(k/layers.length);
+      g.fillStyle = 'rgba(255,255,255,0.30)';
+      g.beginPath();
+      g.moveTo(0, H);
+      for(const p of pts) g.lineTo(p.x, p.y);
+      g.lineTo(W, H);
+      g.closePath();
+      g.clip();
+      for(let n=0;n<specks;n++){
+        const x = rnd()*W;
+        const yTop = profile(x, L.yEdge, L.yPeak, L.wav, L.bump, L.seed, 0.0);
+        const y = yTop + rnd()*(H - yTop);
+        const r = 0.6 + rnd()*1.6;
+        g.beginPath();
+        g.arc(x, y, r, 0, TAU);
+        g.fill();
+      }
+      if(q>=3){
+        g.globalAlpha *= 0.80;
+        g.strokeStyle = 'rgba(0,0,0,0.12)';
+        g.lineWidth = 1.0;
+        for(let n=0;n<22;n++){
+          const yOff = (8 + rnd()*38) * (0.55 + 0.55*(k/layers.length));
+          g.beginPath();
+          for(let i=0;i<pts.length;i++){
+            const p = pts[i];
+            const yy = p.y + yOff + Math.sin(i*0.35 + n*0.7)*2.0;
+            if(i===0) g.moveTo(p.x, yy);
+            else g.lineTo(p.x, yy);
+          }
+          g.stroke();
+        }
+      }
+      g.restore();
+
+      if(k <= 1){
+        g.save();
+        g.globalAlpha = 0.10;
+        const fog2 = g.createLinearGradient(0, topBand, 0, midBand);
+        fog2.addColorStop(0, 'rgba(0,0,0,0)');
+        fog2.addColorStop(1, 'rgba(0,0,0,0.16)');
+        g.fillStyle = fog2;
+        g.fillRect(0, topBand, W, midBand-topBand);
+        g.restore();
+      }
+    }
+
+    // Pasto “en perspectiva”
+    const grassCount = q>=3 ? 1300 : q>=2 ? 950 : 700;
+    g.save();
+    g.globalCompositeOperation = 'screen';
+    for(let i=0;i<grassCount;i++){
+      const t = rnd();
+      const y = topBand + (H-topBand)*(t*t);
+      const x = rnd()*W;
+
+      const depth = clamp((y-topBand)/(H-topBand), 0, 1);
+      const len = (2.0 + rnd()*7.8) * (0.18 + 1.35*depth);
+      const tilt = (rnd()*0.8 - 0.4) + (depth-0.5)*0.22;
+
+      const a = 0.014 + 0.050*depth;
+      const shade = 0.55 + 0.45*rnd();
+      const rr = Math.round(18 + 36*shade);
+      const gg2= Math.round(72 + 120*shade);
+      const bb = Math.round(38 + 64*shade);
+
+      g.globalAlpha = a;
+      g.strokeStyle = `rgba(${rr},${gg2},${bb},0.9)`;
+      g.lineWidth = 0.9 + 1.1*depth;
+      g.lineCap = 'round';
+
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + Math.sin(tilt)*len, y - Math.cos(tilt)*len);
+      g.stroke();
+    }
+    g.restore();
+
+    // Florecitas pequeñas
+    const flowers = q>=3 ? 440 : q>=2 ? 320 : 240;
+    g.save();
+    for(let i=0;i<flowers;i++){
+      const t = rnd();
+      const y = topBand + (H-topBand)*(t*t);
+      const x = rnd()*W;
+
+      const depth = clamp((y-topBand)/(H-topBand), 0, 1);
+      const size = (0.6 + rnd()*1.7) * (0.22 + 1.05*depth);
+      const alpha = (0.06 + 0.10*(1-depth)) * (0.65 + 0.55*rnd());
+
+      const pick = rnd();
+      let c = 'rgba(255,220,235,';        // rosa suave
+      if(pick < 0.33) c = 'rgba(230,235,255,';      // lavanda frío
+      else if(pick < 0.66) c = 'rgba(255,240,215,'; // crema
+
+      g.globalAlpha = alpha;
+      g.fillStyle = c + (0.42 + 0.28*rnd()) + ')';
+      const r = 1.8*size;
+      for(let p=0;p<4;p++){
+        const ang = p*(TAU/4) + rnd()*0.22;
+        g.beginPath();
+        g.ellipse(x + Math.cos(ang)*r, y + Math.sin(ang)*r*0.72, 1.05*size, 0.78*size, ang, 0, TAU);
+        g.fill();
+      }
+      g.globalAlpha = alpha*0.9;
+      g.fillStyle = 'rgba(255,215,140,0.40)';
+      g.beginPath();
+      g.arc(x, y, 0.90*size, 0, TAU);
+      g.fill();
+    }
+    g.restore();
+
+    // Viñeta para integrar con el cielo
+    const blend = g.createLinearGradient(0, topBand-40, 0, topBand+120);
+    blend.addColorStop(0, 'rgba(0,0,0,0)');
+    blend.addColorStop(1, 'rgba(0,0,0,0.18)');
+    g.fillStyle = blend;
+    g.fillRect(0, topBand-40, W, 160);
+
+    fieldCache = off;
+  }
+
+
+
 
   function drawGrass(t){
     if(groundCache){
       ctx.drawImage(groundCache, 0, 0, groundCache.width / DPR, groundCache.height / DPR);
     }
-
     const gy = H * 0.74;
     const groundH = H - gy;
 
@@ -1544,6 +1899,140 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     skyCache = off;
   }
 
+  function rebuildBushCache(){
+    // Arbusto envolvente: sube y abraza el ramo completo (detrás de flores/tallos).
+    // Se cachea para que se vea orgánico sin quemar FPS.
+    const q = CONFIG.quality || 2;
+    const key = `${W}x${H}@q${q}`;
+    if(bushCache && bushCacheKey === key) return;
+
+    bushCacheKey = key;
+
+    const off = document.createElement('canvas');
+    off.width = W;
+    off.height = H;
+    const g = off.getContext('2d');
+
+    const R = Math.min(W,H);
+
+    // --- Base: gradiente de profundidad (desde media pantalla hacia abajo) ---
+    const v = g.createLinearGradient(0, H*0.52, 0, H);
+    v.addColorStop(0, 'rgba(0,0,0,0)');
+    v.addColorStop(0.55, 'rgba(0,0,0,0.10)');
+    v.addColorStop(1, 'rgba(0,0,0,0.26)');
+    g.fillStyle = v;
+    g.fillRect(0, H*0.50, W, H*0.50);
+
+    // --- Masas grandes: crean “volumen” alrededor del ramo, no solo abajo ---
+    // Centro + laterales + “cúpula” detrás de las flores
+    const lumps = [
+      // Cúpula principal (detrás del ramo)
+      {x:0.50, y:0.76, s:0.92, a:0.24},
+      // Soporte inferior
+      {x:0.50, y:0.96, s:0.58, a:0.22},
+      {x:0.35, y:0.97, s:0.52, a:0.20},
+      {x:0.65, y:0.97, s:0.54, a:0.20},
+      // Laterales para “abrazar”
+      {x:0.18, y:0.86, s:0.60, a:0.16},
+      {x:0.82, y:0.86, s:0.60, a:0.16},
+      // Sub-masas para romper simetría
+      {x:0.28, y:0.72, s:0.55, a:0.13},
+      {x:0.72, y:0.72, s:0.55, a:0.13},
+      {x:0.50, y:0.62, s:0.48, a:0.10},
+    ];
+
+    for(const L of lumps){
+      const cx = W*L.x;
+      const cy = H*L.y;
+      const rad = R*L.s;
+
+      const rg = g.createRadialGradient(cx, cy, 10, cx, cy, rad);
+      rg.addColorStop(0, `rgba(85,190,125,${0.18*L.a/0.24})`);
+      rg.addColorStop(0.25, `rgba(65,165,110,${0.24*L.a/0.24})`);
+      rg.addColorStop(0.62, `rgba(32,95,65,${0.18*L.a/0.24})`);
+      rg.addColorStop(0.88, `rgba(10,40,25,${0.12*L.a/0.24})`);
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg;
+      g.fillRect(0,0,W,H);
+    }
+
+    // --- Textura: hojitas sugeridas (desde mitad hacia abajo y alrededor del ramo) ---
+    const count = q>=3 ? 980 : q>=2 ? 720 : 520;
+
+    // PRNG estable por tamaño/calidad
+    let s = ((W*73856093) ^ (H*19349663) ^ (q*83492791)) >>> 0;
+    const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
+
+    g.save();
+    g.globalCompositeOperation = 'screen';
+
+    for(let i=0;i<count;i++){
+      // sesgo hacia el centro del ramo, con laterales también
+      const t = rnd();
+      const cx = 0.50 + (rnd()*0.70 - 0.35) * (0.55 + 0.45*t);  // 0.15..0.85
+      const px = W*clamp(cx, 0.05, 0.95);
+
+      // sube bastante: 0.50..1.00 con densidad mayor abajo
+      const py = H*(0.50 + 0.50*t*t);
+
+      const scale = 0.55 + rnd()*1.85;
+
+      const a = 0.035 + rnd()*0.085;
+      const shade = 0.48 + rnd()*0.52;
+
+      // verdes nocturnos
+      const rr = Math.round(20 + 55*shade);
+      const gg2 = Math.round(80 + 135*shade);
+      const bb = Math.round(40 + 85*shade);
+
+      g.globalAlpha = a;
+
+      // trazos cortos tipo hojita
+      g.strokeStyle = `rgba(${rr},${gg2},${bb},0.95)`;
+      g.lineWidth = 1.10*scale;
+      g.lineCap = 'round';
+
+      const ang = rnd()*TAU;
+      const len = (2.6 + rnd()*8.4) * scale;
+
+      g.beginPath();
+      g.moveTo(px, py);
+      g.lineTo(px + Math.cos(ang)*len, py + Math.sin(ang)*len*0.55);
+      g.stroke();
+
+      // puntito brillante (rocío/hoja)
+      if(i % 3 === 0){
+        g.fillStyle = `rgba(${170 + (rnd()*80|0)},${220 + (rnd()*35|0)},${185 + (rnd()*55|0)},0.50)`;
+        g.beginPath();
+        g.arc(px + Math.cos(ang)*len*0.55, py + Math.sin(ang)*len*0.30, 0.85*scale, 0, TAU);
+        g.fill();
+      }
+    }
+    g.restore();
+
+    // Suavizado leve para integrar
+    try{
+      if(HAS_FILTER){
+        g.save();
+        g.globalAlpha = 0.26;
+        g.filter = 'blur(1.05px)';
+        g.drawImage(off, 0, 0);
+        g.restore();
+      }
+    }catch(_){}
+
+    // Viñeta suave para cerrar los bordes
+    const vig = g.createRadialGradient(W*0.5, H*0.72, R*0.15, W*0.5, H*0.78, R*1.25);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.16)');
+    g.fillStyle = vig;
+    g.fillRect(0,0,W,H);
+
+    bushCache = off;
+  }
+
+
+
 
   function rebuildStaticSkyOverlayCache(){
     const off = document.createElement('canvas');
@@ -1942,8 +2431,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     const key = `${Math.round(w)}x${Math.round(h)}_${col.r},${col.g},${col.b}_${seed}_o${oQ}_p${pvQ}`;
     const cached = bloomCache.get(key);
     if(cached) return cached;
-
-    const ss = 2;
+    const ss = (CONFIG.quality>=3 ? 3 : 2);
     const cw = Math.ceil(w * 2.8);
     const ch = Math.ceil(h * 2.4 + w * 0.35);
 
@@ -1965,16 +2453,17 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     return obj;
   }
   function renderTulipBloomSprite(c2, w, h, col, seed, open, petalsVisible){
-    // Gerbera mejorada: 3 capas de pétalos (rayos) + centro con textura tipo polen.
-    // Además, la “generación” ahora es más suave (petalsVisible llega como float 0..6).
+    // Gerbera mejorada (v2):
+    // - pétalos con punta redondeada + variación de color/alpha
+    // - “corona” interna de pétalos cortos (da volumen)
+    // - centro con anillo + espiral/polen más rico
+    // Nota: esto se renderiza a sprite (cache), así que el costo es razonable.
 
     let s = (seed >>> 0) || 1;
     const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
 
     const pv = clamp((petalsVisible==null?6:petalsVisible), 0, 6); // float
     const appear = pv / 6; // 0..1
-
-    // "open" aquí es una característica del bloom (no tiempo), la usamos sólo como variación estética.
     const op = clamp(open==null?1:open, 0, 1);
 
     const mix = (a,b,t)=>({
@@ -1983,123 +2472,151 @@ const neb = (x,y,r, a, cr,cg,cb) => {
       b: Math.round(lerp(a.b,b.b,t))
     });
 
-    // Colores base
-    const lite = mix(col, {r:255,g:255,b:255}, 0.42);
-    const mid  = mix(col, {r:255,g:230,b:245}, 0.18);
-    const deep = mix(col, {r:25,g:8,b:30},     0.46);
-    const edge = mix(col, {r:255,g:235,b:245}, 0.22);
+    // Colores: damos más “material” al pétalo (base oscuro -> punta clara)
+    const lite = mix(col, {r:255,g:255,b:255}, 0.46);
+    const mid  = mix(col, {r:255,g:230,b:245}, 0.22);
+    const deep = mix(col, {r:18,g:6,b:24},      0.55);
+    const edge = mix(col, {r:255,g:245,b:250},  0.16);
 
-    // Centro de la flor (arriba del tallo)
+    // Centro de la cabeza
     const centerY = -h*0.62;
 
-    // Halo suave (para que “lea” en la noche)
+    // Halo suave
     c2.save();
     c2.globalCompositeOperation = 'lighter';
-    c2.globalAlpha = 0.11;
-    const haloR = Math.max(w*1.25, h*0.95);
-    const gg = c2.createRadialGradient(0, centerY, 8, 0, centerY, haloR);
-    gg.addColorStop(0, rgba(col.r,col.g,col.b,0.26));
-    gg.addColorStop(0.55, rgba(col.r,col.g,col.b,0.09));
-    gg.addColorStop(1, rgba(col.r,col.g,col.b,0));
-    c2.fillStyle = gg;
+    c2.globalAlpha = 0.10;
+    const haloR = Math.max(w*1.35, h*1.00);
+    const halo = c2.createRadialGradient(0, centerY, 8, 0, centerY, haloR);
+    halo.addColorStop(0, rgba(col.r,col.g,col.b,0.22));
+    halo.addColorStop(0.55, rgba(col.r,col.g,col.b,0.07));
+    halo.addColorStop(1, rgba(col.r,col.g,col.b,0));
+    c2.fillStyle = halo;
     c2.beginPath();
-    c2.ellipse(0, centerY, w*1.08, h*0.98, 0, 0, TAU);
+    c2.ellipse(0, centerY, w*1.12, h*1.02, 0, 0, TAU);
     c2.fill();
     c2.restore();
 
-    // Utilidad: curva de aparición por pétalo (con “jitter” para que no nazcan en bloques)
+    // Aparición por pétalo (no “en bloque”)
     const petalStage = (i, total) => {
-      // jitter estable por pétalo
-      const j = (Math.sin((seed*0.0009 + i*12.345) * 1.73) * 0.5 + 0.5) * 0.95; // 0..0.95
-      // escalona la aparición a lo largo de toda la circunferencia
-      const threshold = (i + j) / total;          // 0..1
-      const x = (appear - threshold) * 3.0 + 0.2; // amplifica transición
+      const j = (Math.sin((seed*0.0009 + i*12.345) * 1.73) * 0.5 + 0.5) * 0.92;
+      const threshold = (i + j) / total;
+      const x = (appear - threshold) * 3.1 + 0.25;
       return clamp(x, 0, 1);
     };
 
-    const drawPetal = (ang, len, wid, alpha, shade, bend) => {
+    const drawPetal = (ang, len, wid, alpha, shade, bend, tint) => {
       c2.save();
       c2.translate(0, centerY);
       c2.rotate(ang);
-
-      // curvatura/bending
       c2.rotate(bend);
 
-      // sombra suave detrás (da profundidad)
+      const tipY = -len;
+
+      // sombra suave detrás (profundidad)
       c2.save();
-      c2.globalAlpha = alpha * 0.18;
-      c2.fillStyle = rgba(0,0,0,0.25);
+      c2.globalAlpha = alpha * 0.16;
+      c2.fillStyle = rgba(0,0,0,0.26);
       c2.beginPath();
       c2.moveTo(0, 0);
-      c2.quadraticCurveTo( wid*0.90, -len*0.62, 0, -len);
-      c2.quadraticCurveTo(-wid*0.90, -len*0.62, 0, 0);
+      c2.quadraticCurveTo( wid*0.92, -len*0.62, 0, tipY);
+      c2.quadraticCurveTo(-wid*0.92, -len*0.62, 0, 0);
       c2.closePath();
-      c2.translate(0.6, 1.2);
+      c2.translate(0.7, 1.3);
       c2.fill();
       c2.restore();
 
       // degradado principal del pétalo
-      const tipY = -len;
       const g = c2.createLinearGradient(0, 0, 0, tipY);
-      g.addColorStop(0,   rgba(deep.r,deep.g,deep.b, 0.46*shade));
-      g.addColorStop(0.28,rgba(col.r,col.g,col.b,   0.96*shade));
-      g.addColorStop(0.70,rgba(mid.r,mid.g,mid.b,   0.96*shade));
-      g.addColorStop(1,   rgba(lite.r,lite.g,lite.b,0.98*shade));
+      const base = mix(deep, col, 0.25 + 0.20*tint);
+      const body = mix(col,  mid, 0.18 + 0.18*tint);
+      const tip  = mix(lite, {r:255,g:255,b:255}, 0.10 + 0.10*tint);
+
+      g.addColorStop(0,    rgba(base.r,base.g,base.b, 0.52*shade));
+      g.addColorStop(0.25, rgba(col.r,col.g,col.b,    0.96*shade));
+      g.addColorStop(0.68, rgba(body.r,body.g,body.b, 0.98*shade));
+      g.addColorStop(1,    rgba(tip.r,tip.g,tip.b,    0.98*shade));
 
       c2.globalAlpha = alpha;
       c2.fillStyle = g;
 
-      // forma con “punta” más marcada
-      const ctrlY = -len*0.62;
-      const ctrlX = wid*(0.92 + rnd()*0.16);
+      // Forma: punta redondeada (no “púa”)
+      const ctrlY = -len*0.64;
+      const ctrlX = wid*(0.96 + rnd()*0.14);
+      const cap   = wid*(0.18 + 0.08*rnd()); // ancho de la punta
 
       c2.beginPath();
       c2.moveTo(0, 0);
-      c2.bezierCurveTo( ctrlX, ctrlY,  ctrlX*0.50, tipY*0.98,  0, tipY);
-      c2.bezierCurveTo(-ctrlX*0.50, tipY*0.98, -ctrlX, ctrlY, 0, 0);
+      // borde derecho
+      c2.bezierCurveTo( ctrlX, ctrlY,  ctrlX*0.55, tipY*0.90,  cap, tipY);
+      // “cap” redondeado
+      c2.quadraticCurveTo(0, tipY - wid*0.05, -cap, tipY);
+      // borde izquierdo
+      c2.bezierCurveTo(-ctrlX*0.55, tipY*0.90, -ctrlX, ctrlY, 0, 0);
       c2.closePath();
       c2.fill();
 
-      // highlight de borde (muy sutil)
-      c2.globalAlpha = alpha * 0.22;
+      // highlight de borde
+      c2.globalAlpha = alpha * 0.18;
       c2.strokeStyle = rgba(edge.r,edge.g,edge.b, 0.95);
-      c2.lineWidth = Math.max(0.8, wid*0.11);
+      c2.lineWidth = Math.max(0.8, wid*0.10);
       c2.lineJoin = 'round';
       c2.lineCap  = 'round';
       c2.beginPath();
       c2.moveTo(0, 0);
-      c2.quadraticCurveTo(ctrlX*0.85, ctrlY*0.98, 0, tipY);
+      c2.quadraticCurveTo(ctrlX*0.85, ctrlY*0.98, cap*0.35, tipY);
+      c2.stroke();
+
+      // vena central sutil
+      c2.globalAlpha = alpha * 0.10;
+      c2.strokeStyle = 'rgba(255,255,255,0.22)';
+      c2.lineWidth = Math.max(0.7, wid*0.06);
+      c2.beginPath();
+      c2.moveTo(0, 0);
+      c2.quadraticCurveTo(wid*0.06, tipY*0.55, 0, tipY*0.96);
+      c2.stroke();
+
+      // sombra lateral (para “tubo”)
+      c2.globalAlpha = alpha * 0.08;
+      c2.strokeStyle = 'rgba(0,0,0,0.22)';
+      c2.lineWidth = Math.max(0.7, wid*0.06);
+      c2.beginPath();
+      c2.moveTo(0, 0);
+      c2.quadraticCurveTo(-ctrlX*0.75, ctrlY*0.95, -cap*0.35, tipY);
       c2.stroke();
 
       c2.restore();
     };
 
-    // Capas: outer / mid / inner
-    const totalOuter = 40 + (rnd()*10|0); // 40..49
-    const totalMid   = Math.round(totalOuter * 0.78);
-    const totalInner = Math.round(totalOuter * 0.48);
+    // Capas (menos “espinas”, más pétalo)
+    const totalOuter = 34 + (rnd()*7|0); // 34..40
+    const totalMid   = Math.round(totalOuter * 0.76);
+    const totalInner = Math.round(totalOuter * 0.52);
+    const totalCrown = 18 + (rnd()*6|0); // 18..23
 
-    const baseOuterLen = h*(0.78 + 0.04*rnd()) * (0.72 + 0.28*op);
-    const baseOuterWid = w*(0.115 + 0.018*rnd());
+    const baseOuterLen = h*(0.80 + 0.05*rnd()) * (0.70 + 0.30*op);
+    const baseOuterWid = w*(0.135 + 0.020*rnd());
 
-    const baseMidLen   = h*(0.60 + 0.03*rnd()) * (0.72 + 0.28*op);
-    const baseMidWid   = w*(0.095 + 0.014*rnd());
+    const baseMidLen   = h*(0.62 + 0.04*rnd()) * (0.70 + 0.30*op);
+    const baseMidWid   = w*(0.112 + 0.016*rnd());
 
-    const baseInLen    = h*(0.42 + 0.02*rnd()) * (0.72 + 0.28*op);
-    const baseInWid    = w*(0.070 + 0.012*rnd());
+    const baseInLen    = h*(0.46 + 0.03*rnd()) * (0.70 + 0.30*op);
+    const baseInWid    = w*(0.085 + 0.012*rnd());
 
-    // Para que se vea "generación" progresiva: alpha/len dependen del stage.
+    const baseCrLen    = h*(0.30 + 0.02*rnd()) * (0.75 + 0.25*op);
+    const baseCrWid    = w*(0.070 + 0.010*rnd());
+
     // Outer
     for(let i=0;i<totalOuter;i++){
       const st = petalStage(i, totalOuter);
       if(st <= 0) continue;
 
-      const ang = (i/totalOuter)*TAU + (rnd()*0.10 - 0.05);
-      const bend = (rnd()*0.22 - 0.11);
+      const ang = (i/totalOuter)*TAU + (rnd()*0.08 - 0.04);
+      const bend = (rnd()*0.18 - 0.09);
+      const tint = rnd()*1.0;
 
-      const len = baseOuterLen*(0.82 + 0.28*rnd()) * (0.35 + 0.65*st);
-      const wid = baseOuterWid*(0.75 + 0.40*rnd()) * (0.55 + 0.45*st);
-      drawPetal(ang, len, wid, 0.90*st, 0.92, bend);
+      const len = baseOuterLen*(0.86 + 0.24*rnd()) * (0.35 + 0.65*st);
+      const wid = baseOuterWid*(0.78 + 0.36*rnd()) * (0.55 + 0.45*st);
+      drawPetal(ang, len, wid, 0.92*st, 0.92, bend, tint);
     }
 
     // Mid
@@ -2107,88 +2624,164 @@ const neb = (x,y,r, a, cr,cg,cb) => {
       const st = petalStage(i, totalMid);
       if(st <= 0) continue;
 
-      const ang = (i/totalMid)*TAU + (rnd()*0.10 - 0.05) + 0.06;
-      const bend = (rnd()*0.18 - 0.09);
+      const ang = (i/totalMid)*TAU + (rnd()*0.08 - 0.04) + 0.05;
+      const bend = (rnd()*0.14 - 0.07);
+      const tint = rnd()*1.0;
 
-      const len = baseMidLen*(0.84 + 0.22*rnd()) * (0.35 + 0.65*st);
-      const wid = baseMidWid*(0.75 + 0.35*rnd()) * (0.55 + 0.45*st);
-      drawPetal(ang, len, wid, 0.78*st, 0.98, bend);
+      const len = baseMidLen*(0.86 + 0.22*rnd()) * (0.35 + 0.65*st);
+      const wid = baseMidWid*(0.78 + 0.34*rnd()) * (0.55 + 0.45*st);
+      drawPetal(ang, len, wid, 0.78*st, 0.98, bend, tint);
     }
 
-    // Inner "rays" (más densos cerca del centro)
+    // Inner rays
     for(let i=0;i<totalInner;i++){
       const st = petalStage(i, totalInner);
       if(st <= 0) continue;
 
-      const ang = (i/totalInner)*TAU + (rnd()*0.10 - 0.05) - 0.03;
-      const bend = (rnd()*0.14 - 0.07);
+      const ang = (i/totalInner)*TAU + (rnd()*0.08 - 0.04) - 0.03;
+      const bend = (rnd()*0.12 - 0.06);
+      const tint = rnd()*1.0;
 
       const len = baseInLen*(0.88 + 0.18*rnd()) * (0.35 + 0.65*st);
-      const wid = baseInWid*(0.80 + 0.30*rnd()) * (0.55 + 0.45*st);
-      drawPetal(ang, len, wid, 0.62*st, 1.00, bend);
+      const wid = baseInWid*(0.82 + 0.30*rnd()) * (0.55 + 0.45*st);
+      drawPetal(ang, len, wid, 0.62*st, 1.00, bend, tint);
     }
 
-    // Centro (disco) con textura
-    const discR = w*(0.20 + 0.02*rnd());
+    // Corona interna (pétalos cortos y más claros, alrededor del centro)
+    // Da ese look “gerbera” más voluminoso.
+    const crownAppear = clamp((appear - 0.30) * 1.6, 0, 1);
+    if(crownAppear > 0){
+      const crownCol = mix(col, {r:255,g:245,b:235}, 0.35);
+      const crownLite = mix(crownCol, {r:255,g:255,b:255}, 0.55);
+      const crownDeep = mix(crownCol, {r:40,g:20,b:30}, 0.45);
+
+      for(let i=0;i<totalCrown;i++){
+        const st = petalStage(i, totalCrown) * crownAppear;
+        if(st <= 0) continue;
+
+        const ang = (i/totalCrown)*TAU + (rnd()*0.08 - 0.04);
+        const bend = (rnd()*0.10 - 0.05);
+
+        // mini-pétalo con su propio degradado rápido (sin llamar drawPetal para no mezclar paleta)
+        c2.save();
+        c2.translate(0, centerY);
+        c2.rotate(ang);
+        c2.rotate(bend);
+
+        const len = baseCrLen*(0.90 + 0.20*rnd()) * (0.45 + 0.55*st);
+        const wid = baseCrWid*(0.85 + 0.30*rnd()) * (0.55 + 0.45*st);
+        const tipY = -len;
+
+        const g = c2.createLinearGradient(0, 0, 0, tipY);
+        g.addColorStop(0, rgba(crownDeep.r,crownDeep.g,crownDeep.b, 0.42));
+        g.addColorStop(0.40, rgba(crownCol.r,crownCol.g,crownCol.b, 0.85));
+        g.addColorStop(1, rgba(crownLite.r,crownLite.g,crownLite.b, 0.95));
+
+        c2.globalAlpha = 0.55 * st;
+        c2.fillStyle = g;
+
+        const ctrlX = wid*(0.95 + rnd()*0.10);
+        const ctrlY = -len*0.62;
+        const cap = wid*(0.22 + 0.06*rnd());
+
+        c2.beginPath();
+        c2.moveTo(0, 0);
+        c2.bezierCurveTo( ctrlX, ctrlY,  ctrlX*0.55, tipY*0.90,  cap, tipY);
+        c2.quadraticCurveTo(0, tipY - wid*0.04, -cap, tipY);
+        c2.bezierCurveTo(-ctrlX*0.55, tipY*0.90, -ctrlX, ctrlY, 0, 0);
+        c2.closePath();
+        c2.fill();
+
+        c2.restore();
+      }
+    }
+
+    // Centro (disco) con anillo + textura tipo espiral
+    const discR = w*(0.22 + 0.02*rnd());
     const discGrow = (0.25 + 0.75*clamp(appear*1.25, 0, 1));
 
-    const core = c2.createRadialGradient(0, centerY, discR*0.12, 0, centerY, discR*1.35);
-    core.addColorStop(0,   rgba(255, 240, 175, 0.98));
-    core.addColorStop(0.55,rgba(235, 185, 100, 0.98));
-    core.addColorStop(1,   rgba(120,  65,  35, 0.96));
+    // Sombra de “cuenco” (ancla el centro)
+    c2.save();
+    c2.globalAlpha = 0.18 * discGrow;
+    c2.fillStyle = 'rgba(0,0,0,0.28)';
+    c2.beginPath();
+    c2.ellipse(0, centerY + discR*0.10, discR*1.25*discGrow, discR*0.90*discGrow, 0, 0, TAU);
+    c2.fill();
+    c2.restore();
+
+    const core = c2.createRadialGradient(0, centerY, discR*0.10, 0, centerY, discR*1.45);
+    core.addColorStop(0,   rgba(255, 246, 190, 0.98));
+    core.addColorStop(0.45,rgba(245, 205, 120, 0.98));
+    core.addColorStop(0.78,rgba(195, 110,  55, 0.96));
+    core.addColorStop(1,   rgba(105,  55,  32, 0.96));
 
     c2.save();
-    c2.globalAlpha = 0.22 + 0.78*discGrow;
+    c2.globalAlpha = 0.24 + 0.76*discGrow;
     c2.fillStyle = core;
     c2.beginPath();
-    c2.ellipse(0, centerY, discR*1.05*discGrow, discR*0.95*discGrow, rnd()*0.8, 0, TAU);
+    c2.ellipse(0, centerY, discR*1.08*discGrow, discR*0.98*discGrow, rnd()*0.8, 0, TAU);
     c2.fill();
 
-    // anillo exterior sutil
-    c2.globalAlpha *= 0.65;
-    c2.strokeStyle = rgba(255, 230, 160, 0.45);
-    c2.lineWidth = Math.max(0.9, discR*0.10);
+    // anillo exterior con puntitos (transición pétalo-centro)
+    c2.globalAlpha *= 0.70;
+    c2.strokeStyle = rgba(255, 238, 175, 0.45);
+    c2.lineWidth = Math.max(0.9, discR*0.11);
     c2.beginPath();
-    c2.ellipse(0, centerY, discR*1.00*discGrow, discR*0.88*discGrow, 0, 0, TAU);
+    c2.ellipse(0, centerY, discR*1.05*discGrow, discR*0.92*discGrow, 0, 0, TAU);
     c2.stroke();
 
-    // polen: muchos puntitos
-    c2.globalAlpha *= 0.75;
-    const dots = 64;
-    for(let k=0;k<dots;k++){
-      const a = rnd()*TAU;
-      const rr = discR*(0.12 + 0.92*rnd())*discGrow;
+    // polen: espiral + granos
+    c2.globalAlpha *= 0.78;
+    const grains = 84;
+    for(let k=0;k<grains;k++){
+      // espiral suave
+      const t = (k/(grains-1));
+      const a = t*TAU*2.1 + rnd()*0.25;
+      const rr = discR*(0.15 + 0.80*t)*discGrow;
       const x = Math.cos(a)*rr*0.78;
-      const y = centerY + Math.sin(a)*rr*0.65;
-      const r0 = discR*(0.010 + 0.022*rnd())*discGrow;
-      c2.fillStyle = rgba(70, 35, 22, 0.35 + 0.35*rnd());
+      const y = centerY + Math.sin(a)*rr*0.60;
+
+      const r0 = discR*(0.010 + 0.020*rnd())*discGrow;
+      const dark = 0.28 + 0.30*rnd();
+      c2.fillStyle = rgba(70, 35, 22, dark);
       c2.beginPath();
-      c2.ellipse(x, y, r0*1.2, r0, rnd()*TAU, 0, TAU);
+      c2.ellipse(x, y, r0*1.25, r0, rnd()*TAU, 0, TAU);
       c2.fill();
+
+      // micro-highlight
+      if(k%4===0){
+        c2.globalCompositeOperation = 'screen';
+        c2.fillStyle = 'rgba(255,255,255,0.08)';
+        c2.beginPath();
+        c2.arc(x - r0*0.2, y - r0*0.2, r0*0.55, 0, TAU);
+        c2.fill();
+        c2.globalCompositeOperation = 'source-over';
+      }
     }
 
-    // brillo suave
+    // brillo suave del centro
     c2.globalCompositeOperation = 'lighter';
     c2.globalAlpha = 0.10;
-    const shine = c2.createRadialGradient(0, centerY - discR*0.15, 0, 0, centerY - discR*0.15, discR*2.2);
+    const shine = c2.createRadialGradient(0, centerY - discR*0.15, 0, 0, centerY - discR*0.15, discR*2.3);
     shine.addColorStop(0, 'rgba(255,255,255,0.18)');
     shine.addColorStop(1, 'rgba(255,255,255,0)');
     c2.fillStyle = shine;
     c2.beginPath();
-    c2.arc(0, centerY - discR*0.15, discR*2.0, 0, TAU);
+    c2.arc(0, centerY - discR*0.15, discR*2.05, 0, TAU);
     c2.fill();
 
     c2.restore();
 
     // sombra mínima para “anclar” la cabeza al tallo
     c2.save();
-    c2.globalAlpha = 0.22;
+    c2.globalAlpha = 0.20;
     c2.fillStyle = rgba(0,0,0,0.18);
     c2.beginPath();
-    c2.ellipse(0, h*0.02, w*0.28, h*0.11, 0, 0, TAU);
+    c2.ellipse(0, h*0.02, w*0.30, h*0.11, 0, 0, TAU);
     c2.fill();
     c2.restore();
   }
+
 
 
 
@@ -2202,116 +2795,295 @@ const neb = (x,y,r, a, cr,cg,cb) => {
       spr.canvas.height / spr.ss
     );
   }
-
-  
   function drawBouquetWrap(cx, cy, s){
-    // Un envoltorio simple (hojas + listón) para que sí se lea como "ramo"
+    // Opción 1: Cono de papel clásico (crema/blanco) con borde doblado y sombras suaves.
+    // Se dibuja DESPUÉS de tallos y ANTES de flores para tapar tallos y dejar cabezas libres.
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(s, s);
 
-    const leaf = (rot, flip) => {
+    // Sombra base
+    ctx.save();
+    ctx.globalAlpha *= 0.55;
+    const sh = ctx.createRadialGradient(0, 32, 12, 0, 32, 230);
+    sh.addColorStop(0, 'rgba(0,0,0,0.20)');
+    sh.addColorStop(0.55, 'rgba(0,0,0,0.09)');
+    sh.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sh;
+    ctx.beginPath();
+    ctx.ellipse(0, 36, 204, 62, 0, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+
+    // Paleta “papel”
+    const C0 = {r:236, g:232, b:220}; // crema base
+    const C1 = {r:250, g:248, b:242}; // highlight
+    const C2 = {r:206, g:198, b:182}; // sombra suave
+    const edge = {r:255, g:255, b:255};
+
+    // PRNG fijo para textura
+    let s0 = 0xC0FFEE;
+    const rnd = () => (s0 = (s0 * 1664525 + 1013904223) >>> 0, s0 / 4294967296);
+
+    // Geometría del envoltorio
+    const TOP = -285;
+    const BOT =  96;
+    const WID =  182;
+
+    const conePath = (W, topLift=0) => {
+      // Forma tipo cono/papel doblado
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(-0.98*W, -170, -0.92*W, -300, -0.28*W, TOP+topLift);
+      ctx.bezierCurveTo( 0.10*W, TOP-22+topLift,  1.02*W, -260,  0.84*W, -70);
+      ctx.bezierCurveTo( 0.66*W,  56,   0.24*W,  60,    0, 0);
+      ctx.closePath();
+    };
+
+    const paperPanel = (rot, flip, alpha, widen, lift, warmTint) => {
       ctx.save();
       ctx.rotate(rot);
       ctx.scale(flip, 1);
+      ctx.translate(0, lift);
 
-      const g = ctx.createLinearGradient(-40, 10, 40, -120);
-      g.addColorStop(0, 'rgba(8,26,16,0.82)');
-      g.addColorStop(0.55, 'rgba(38,130,78,0.66)');
-      g.addColorStop(1, 'rgba(190,255,220,0.18)');
+      const W = WID*widen;
 
+      // Gradiente del papel (más claro arriba)
+      const g = ctx.createLinearGradient(-W*0.60, BOT*0.35, W*0.40, TOP*0.70);
+      g.addColorStop(0, rgba(C2.r, C2.g, C2.b, 0.82));
+      g.addColorStop(0.45, rgba(C0.r, C0.g, C0.b, 0.92));
+      g.addColorStop(1, rgba(C1.r, C1.g, C1.b, 0.98));
+
+      ctx.globalAlpha *= alpha;
       ctx.fillStyle = g;
-      ctx.shadowColor = 'rgba(0,0,0,0.28)';
-      ctx.shadowBlur = 14;
+      ctx.shadowColor = 'rgba(0,0,0,0.24)';
+      ctx.shadowBlur = 18;
 
+      conePath(W, 0);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Borde doblado (boca del papel): una banda superior con sombra interior
+      ctx.save();
+      // Trazo oscuro (sombra interior)
+      ctx.globalAlpha *= 0.55;
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(-48, -30, -64, -92, -14, -138);
-      ctx.bezierCurveTo(10, -156, 64, -116, 48, -56);
-      ctx.bezierCurveTo(38, -18, 14, -6, 0, 0);
+      ctx.moveTo(-0.24*W, TOP+2);
+      ctx.quadraticCurveTo(0, TOP-18, 0.24*W, TOP+2);
+      ctx.stroke();
+
+      // Banda clara del doblez
+      const lip = ctx.createLinearGradient(0, TOP-24, 0, TOP+26);
+      lip.addColorStop(0, 'rgba(255,255,255,0.68)');
+      lip.addColorStop(0.55, 'rgba(248,246,240,0.42)');
+      lip.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha *= 0.75;
+      ctx.fillStyle = lip;
+      ctx.beginPath();
+      ctx.moveTo(-0.26*W, TOP+4);
+      ctx.quadraticCurveTo(0, TOP-20, 0.26*W, TOP+4);
+      ctx.quadraticCurveTo(0, TOP+20, -0.26*W, TOP+4);
       ctx.closePath();
       ctx.fill();
 
-      ctx.shadowBlur = 0;
-      ctx.globalAlpha = 0.18;
-      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-      ctx.lineWidth = 2;
+      // Highlight del borde
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha *= 0.35;
+      ctx.strokeStyle = rgba(edge.r, edge.g, edge.b, 0.30);
+      ctx.lineWidth = 2.4;
       ctx.beginPath();
-      ctx.moveTo(-6, -6);
-      ctx.quadraticCurveTo(10, -58, -2, -126);
+      ctx.moveTo(-0.22*W, TOP+3);
+      ctx.quadraticCurveTo(0, TOP-16, 0.22*W, TOP+3);
       ctx.stroke();
+      ctx.restore();
+
+      // Pliegues suaves (poco, para que no se vea “cartón”)
+      ctx.save();
+      ctx.globalAlpha *= 0.18;
+      ctx.strokeStyle = 'rgba(255,255,255,0.20)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(-0.08*W, -40);
+      ctx.quadraticCurveTo(0.20*W, -190, 0.02*W, TOP+14);
+      ctx.stroke();
+
+      ctx.globalAlpha *= 0.90;
+      ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(0.14*W, -70);
+      ctx.quadraticCurveTo(0.38*W, -210, 0.16*W, TOP+32);
+      ctx.stroke();
+      ctx.restore();
+
+      // Textura “papel”: puntitos y fibras (muy sutil)
+      ctx.save();
+      ctx.globalAlpha *= 0.07;
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      for(let i=0;i<28;i++){
+        const x = (rnd()*2-1) * W*0.62;
+        const y = TOP + rnd()*(BOT-TOP)*0.92;
+        const r = 0.7 + rnd()*1.4;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, TAU);
+        ctx.fill();
+      }
+      // fibras: trazos muy cortos
+      ctx.globalAlpha *= 0.65;
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1.0;
+      for(let i=0;i<16;i++){
+        const x = (rnd()*2-1) * W*0.58;
+        const y = TOP + rnd()*(BOT-TOP)*0.90;
+        const a = rnd()*TAU;
+        const L = 6 + rnd()*10;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(a)*L, y + Math.sin(a)*L*0.5);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Tint cálido leve si se pide (para paneles laterales)
+      if(warmTint){
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.globalAlpha *= 0.10;
+        ctx.fillStyle = 'rgba(255,235,210,0.7)';
+        conePath(W, 0);
+        ctx.fill();
+        ctx.restore();
+      }
 
       ctx.restore();
     };
 
-    // hojas de envoltura
-    leaf(-0.26, 1);
-    leaf( 0.30, -1);
-    leaf( 0.02, 1);
+    // Paneles del cono (back -> front)
+    paperPanel( 0.00,  1, 0.94, 1.18, 0, false);   // trasero
+    paperPanel(-0.30,  1, 0.96, 1.08, 8, true);    // izquierdo
+    paperPanel( 0.32, -1, 0.96, 1.08, 8, true);    // derecho
+    paperPanel( 0.08,  1, 0.90, 0.98, 12, false);  // frontal
 
-    // Listón oscuro con brillo
+    // Banda central muy sutil (para “unir”)
     ctx.save();
-    ctx.translate(0, 10);
-
-    const band = ctx.createLinearGradient(-80, 0, 80, 0);
-    band.addColorStop(0, 'rgba(30,10,18,0.55)');
-    band.addColorStop(0.5, 'rgba(80,22,38,0.48)');
-    band.addColorStop(1, 'rgba(18,6,12,0.55)');
-
+    ctx.globalAlpha *= 0.22;
+    const band = ctx.createLinearGradient(0, TOP, 0, 40);
+    band.addColorStop(0, 'rgba(255,255,255,0.22)');
+    band.addColorStop(0.5, 'rgba(240,236,226,0.10)');
+    band.addColorStop(1, 'rgba(0,0,0,0.00)');
     ctx.fillStyle = band;
-    ctx.shadowColor = 'rgba(0,0,0,0.40)';
+    ctx.beginPath();
+    ctx.moveTo(-164, 14);
+    ctx.quadraticCurveTo(0, -12, 164, 14);
+    ctx.lineTo(130, TOP+12);
+    ctx.quadraticCurveTo(0, TOP-30, -130, TOP+12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Listón (mantener el contraste con el papel claro)
+    ctx.save();
+    ctx.translate(0, 18);
+
+    const rib = ctx.createLinearGradient(-112, 0, 112, 0);
+    rib.addColorStop(0, 'rgba(22,7,14,0.62)');
+    rib.addColorStop(0.5, 'rgba(118,34,58,0.56)');
+    rib.addColorStop(1, 'rgba(14,6,12,0.62)');
+
+    ctx.fillStyle = rib;
+    ctx.shadowColor = 'rgba(0,0,0,0.34)';
     ctx.shadowBlur = 10;
 
     ctx.beginPath();
-    ctx.moveTo(-88, -10);
-    ctx.quadraticCurveTo(0, 18, 88, -10);
-    ctx.quadraticCurveTo(0, 34, -88, -10);
+    ctx.moveTo(-114, -12);
+    ctx.quadraticCurveTo(0, 20, 114, -12);
+    ctx.quadraticCurveTo(0, 42, -114, -12);
     ctx.closePath();
     ctx.fill();
-
     ctx.shadowBlur = 0;
-    ctx.globalAlpha = 0.16;
-    ctx.strokeStyle = 'rgba(255,235,245,0.20)';
-    ctx.lineWidth = 1.6;
+
+    // brillo banda
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha *= 0.18;
+    ctx.strokeStyle = 'rgba(255,235,245,0.24)';
+    ctx.lineWidth = 2.0;
     ctx.beginPath();
-    ctx.moveTo(-80, -8);
-    ctx.quadraticCurveTo(0, 10, 80, -8);
+    ctx.moveTo(-102, -10);
+    ctx.quadraticCurveTo(0, 10, 102, -10);
     ctx.stroke();
+    ctx.restore();
 
     // nudo
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = 'rgba(50,14,24,0.62)';
+    const knot = ctx.createRadialGradient(-6, -2, 2, 0, 2, 30);
+    knot.addColorStop(0, 'rgba(150,62,90,0.66)');
+    knot.addColorStop(0.55, 'rgba(66,18,36,0.62)');
+    knot.addColorStop(1, 'rgba(14,6,12,0.60)');
+    ctx.fillStyle = knot;
     ctx.beginPath();
-    ctx.ellipse(0, 2, 18, 12, 0, 0, TAU);
+    ctx.ellipse(0, 2, 24, 15, 0, 0, TAU);
     ctx.fill();
 
     ctx.globalAlpha = 0.10;
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillStyle = 'rgba(255,255,255,0.40)';
     ctx.beginPath();
-    ctx.ellipse(-5, -1, 8, 4, -0.2, 0, TAU);
+    ctx.ellipse(-6, -1, 11, 5.4, -0.2, 0, TAU);
     ctx.fill();
 
-    ctx.restore();
+    // colitas
+    ctx.globalAlpha = 0.74;
+    const tailGrad = ctx.createLinearGradient(0, 10, 0, 84);
+    tailGrad.addColorStop(0, 'rgba(112,32,56,0.42)');
+    tailGrad.addColorStop(1, 'rgba(14,5,10,0.42)');
+    ctx.fillStyle = tailGrad;
+
+    const tail = (x, flip) => {
+      ctx.save();
+      ctx.translate(x, 20);
+      ctx.scale(flip, 1);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(18, 12, 26, 36);
+      ctx.quadraticCurveTo(14, 70, -14, 74);
+      ctx.quadraticCurveTo(-18, 44, 0, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.moveTo(6, 68);
+      ctx.lineTo(26, 72);
+      ctx.lineTo(10, 90);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+    tail(-32, 1);
+    tail( 32,-1);
+
+    ctx.restore(); // ribbon
     ctx.restore();
   }
 
+
+
+
+
 // ===== Bouquet =====
   const DESCS = [
-    // 9 gerberas: más compacto y con capas para que se vea como un ramo
-    {dx:-0.48, hf:0.70, bs:0.82},
-    {dx: 0.48, hf:0.72, bs:0.84},
-
-    {dx:-0.30, hf:0.84, bs:0.90},
-    {dx: 0.30, hf:0.86, bs:0.92},
-
-    {dx:-0.14, hf:0.98, bs:1.00},
-    {dx: 0.14, hf:0.98, bs:1.00},
-
-    {dx: 0.00, hf:1.06, bs:1.02}, // un poquito más alto al fondo
-
-    // capa frontal
-    {dx:-0.08, hf:0.80, bs:0.96},
-    {dx: 0.08, hf:0.80, bs:0.96},
+    // 9 gerberas: abanico amplio para que se aprecie cada una (sin amontonarse)
+    // dx = separación horizontal, hf = altura del tallo, bs = escala de la flor
+    {dx:-0.82, hf:0.98, bs:0.92},
+    {dx:-0.60, hf:1.05, bs:0.93},
+    {dx:-0.38, hf:1.12, bs:0.94},
+    {dx:-0.18, hf:1.18, bs:0.95},
+    {dx: 0.00, hf:1.22, bs:0.96},
+    {dx: 0.18, hf:1.18, bs:0.95},
+    {dx: 0.38, hf:1.12, bs:0.94},
+    {dx: 0.60, hf:1.05, bs:0.93},
+    {dx: 0.82, hf:0.98, bs:0.92},
   ];
   const COLORS = [
     // Rosados (variación sutil para pétalos suaves y luminosos)
@@ -2328,14 +3100,12 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     const cx = W*0.5;
     const baseY = H*0.93;
     const scaleBase = lerp(0.74, 1.12, clamp(Math.min(W, H)/820, 0, 1));
-    const spread = Math.min(W*0.44, 220 + W*0.05);
-
-    bouquet = DESCS.map((p,i)=>{
+    const spread = Math.min(W*0.48, 250 + W*0.06);
+bouquet = DESCS.map((p,i)=>{
       const scale = scaleBase * p.bs;
       const bw = (40 + ((i%3)-1)*2) * scale;
       const bh = (86 + ((i%4)-2)*4) * scale;
-      const center = (DESCS.length - 1) / 2;
-      const twist = (i - center) * 0.016;
+      const twist = p.dx * 0.12;
 
       return {
         i,
@@ -2363,13 +3133,65 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     ctx.fillStyle = hg;
     ctx.fillRect(0,0,W,H);
 
-    const bush = ctx.createRadialGradient(W*0.5, H*0.95, 10, W*0.5, H*0.95, Math.min(W,H)*0.45);
-    bush.addColorStop(0, 'rgba(65,150,95,0.16)');
-    bush.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = bush;
-    ctx.fillRect(0,0,W,H);
+    // Campo de flores al fondo (detrás del arbusto y por encima del suelo)
+    rebuildFieldCache();
+    if(fieldCache){
+      ctx.save();
+      // Solo franja media: evita tapar el pasto del primer plano
+      const topBand = H*0.50;
+      const botBand = H*0.74; // coincide con el inicio del suelo/pasto
+      ctx.beginPath();
+      ctx.rect(0, topBand, W, botBand - topBand);
+      ctx.clip();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha *= 0.95; // visible pero sin “aplastar” la noche
+      ctx.drawImage(fieldCache, 0, 0, fieldCache.width / DPR, fieldCache.height / DPR);
+      ctx.restore();
+    }
+    // Arbusto: base cacheada + borde suave (sin tapar el campo ni borrar el césped)
+    rebuildBushCache();
+    if(bushCache){
+      const bushTop = H*0.78;
 
-    const STEM = {r:55,g:155,b:92};
+      // Pasada 1: franja suave arriba (fade visual, sin composiciones destructivas)
+      ctx.save();
+      ctx.globalAlpha *= 0.22;
+      ctx.beginPath();
+      ctx.rect(0, bushTop - H*0.06, W, H*0.14);
+      ctx.clip();
+      ctx.drawImage(bushCache, 0, 0, bushCache.width / DPR, bushCache.height / DPR);
+      ctx.restore();
+
+      // Pasada 2: base más densa, recortada hacia abajo
+      ctx.save();
+      ctx.globalAlpha *= 0.62;
+      ctx.beginPath();
+      ctx.rect(0, bushTop, W, H - bushTop);
+      ctx.clip();
+      ctx.drawImage(bushCache, 0, 0, bushCache.width / DPR, bushCache.height / DPR);
+      ctx.restore();
+    }
+
+    // Brillo animado leve
+    // Brillo animado leve (como “respiración” del follaje)
+    if(!(CONFIG.reduceMotion && !CONFIG.forceFlowerMotion)){
+      const tt = t * 0.001;
+      const pulse = 0.5 + 0.5*Math.sin(tt*0.9);
+      const cx = W*(0.50 + 0.06*Math.sin(tt*0.25));
+      const cy = H*0.80;
+      const rr = Math.min(W,H) * (0.62 + 0.10*pulse);
+
+      const glow = ctx.createRadialGradient(cx, cy, 10, cx, cy, rr);
+      glow.addColorStop(0, `rgba(120,220,160,${0.06 + 0.04*pulse})`);
+      glow.addColorStop(0.55, `rgba(80,180,130,${0.035 + 0.03*pulse})`);
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = glow;
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }
+const STEM = {r:55,g:155,b:92};
     const STEM2= {r:35,g:120,b:72};
 
     const gw = windField(t) * CONFIG.sway;
@@ -2506,8 +3328,8 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     const wrapAlpha = introActive ? smoothstep(0.28, 0.78, master) : 1;
     ctx.save();
     ctx.globalAlpha *= wrapAlpha;
-    drawBouquetWrap(W*0.5, H*0.935, wrapS);
-    ctx.restore();
+    // (envoltorio desactivado)
+ctx.restore();
 
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
@@ -2589,11 +3411,15 @@ for(const f of bloomOrder){
     const knotX = W*0.5, knotY = H*0.935;
     ctx.save();
     ctx.globalAlpha *= (introActive ? wrapAlpha : 1);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    // Sombra más suave bajo el nudo/envoltura (evita la “línea negra”)
+    const ks = ctx.createRadialGradient(knotX, knotY, 6, knotX, knotY, Math.min(140, W*0.26));
+    ks.addColorStop(0, 'rgba(0,0,0,0.16)');
+    ks.addColorStop(0.55, 'rgba(0,0,0,0.08)');
+    ks.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = ks;
     ctx.beginPath();
-    ctx.ellipse(knotX, knotY, Math.min(110, W*0.20), 26, 0, 0, TAU);
-    ctx.fill();
-    ctx.restore();
+    ctx.ellipse(knotX, knotY, Math.min(130, W*0.24), 34, 0, 0, TAU);
+    ctx.fill();ctx.restore();
   }
 
   function addSparkle(x, y, t){
@@ -2662,6 +3488,8 @@ for(const f of bloomOrder){
     rebuildMoonCache();
     rebuildStaticSkyOverlayCache();
 
+
+    rebuildFieldCache();
     seedBouquet();
     seedSoil();
     seedGrass();
