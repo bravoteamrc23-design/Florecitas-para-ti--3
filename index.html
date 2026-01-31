@@ -104,13 +104,13 @@
 
   // Color aleatorio pero estable por semilla (así cada gerbera "nace" con su propio tono)
   const colorFromSeed = (seed)=>{
-    // Antes: tono aleatorio por semilla. Ahora: amarillo (con variación mínima para que no se vea “plano”).
+    // Azul (con variación mínima para que no se vea plano).
     let s = (seed >>> 0) || 1;
     const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
 
-    const h = 50;                 // amarillo
-    const sat = 88 + rnd()*8;     // 88..96
-    const lit = 56 + rnd()*10;    // 56..66
+    const h = 212;                // azul
+    const sat = 78 + rnd()*14;    // 78..92
+    const lit = 46 + rnd()*12;    // 46..58
     return hslToRgb(h, sat, lit);
   };
 
@@ -187,7 +187,7 @@ function restartIntro(){
     crownStrength: 0.008,
 
     // Texto “en estrellas”
-    starText: 'today you look so beautiful, darling <3',
+    starText: 'Good morning darling <3',
     starTextStrength: 0.95    ,
 
     // Rendimiento / calidad
@@ -592,7 +592,7 @@ window.addEventListener('keydown', (e) => {
   let bushCacheKey = '';
   const bloomCache = new Map();
 
-// ===== Luna (cache + generación) =====
+// ===== Sol (cache + generación) =====
 let moonCache = null;
 let moonCacheR = 0;
 let moonCachePad = 0;
@@ -1779,7 +1779,7 @@ function drawMoon(t){
     g.fillRect(0,0,W,H);
 
 
-    // Luna: ahora se dibuja dinámicamente (con “generación”) en drawSky()
+    // Sol: ahora se dibuja dinámicamente (con “generación”) en drawSky()
 // para que aparezca como el ramo cuando inicia / se re-genera.
 const neb = (x,y,r, a, cr,cg,cb) => {
       const gg = g.createRadialGradient(x,y, 10, x,y, r);
@@ -1864,42 +1864,103 @@ const neb = (x,y,r, a, cr,cg,cb) => {
 
     g.restore();
 
+    
+
+    // Sol (mejorado): disco con limb-darkening, corona con espículas y textura suave
     const mx = W*LIGHT.x, my = H*LIGHT.y;
-    const moon = g.createRadialGradient(mx, my, 10, mx, my, Math.max(W,H)*0.55);
-    moon.addColorStop(0, 'rgba(245,250,255,0.12)');
-    moon.addColorStop(0.35, 'rgba(210,225,255,0.06)');
-    moon.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = moon;
-    g.fillRect(0,0,W,H);
+    const R  = Math.min(W,H)*0.078;
 
-    const hz = g.createLinearGradient(0, H*0.56, 0, H*0.80);
-    hz.addColorStop(0, 'rgba(120,150,255,0)');
-    hz.addColorStop(1, 'rgba(90,120,210,0.06)');
-    g.fillStyle = hz;
-    g.fillRect(0,0,W,H);
-
-    // Glow difuminado detrás del texto
-    const sMin = Math.min(W, H);
-    let fontSize = clamp(sMin * 0.09, 26, 58);
+    // Halo profundo (base)
     g.save();
     g.globalCompositeOperation = 'screen';
-    g.globalAlpha = 0.10;
-    g.shadowColor = 'rgba(210,230,255,0.45)';
-    g.shadowBlur = fontSize * 0.95;
-    g.fillStyle = 'rgba(210,230,255,0.10)';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.font = `700 ${Math.round(fontSize)}px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
-    const maxW = W * 0.92;
-    const mt = g.measureText(CONFIG.starText);
-    if(mt.width > maxW){
-      fontSize = clamp(fontSize * (maxW / mt.width), 18, fontSize);
-      g.shadowBlur = fontSize * 0.95;
-      g.font = `700 ${Math.round(fontSize)}px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+    const glow0 = g.createRadialGradient(mx, my, R*0.25, mx, my, R*4.2);
+    glow0.addColorStop(0.00,'rgba(255,250,220,0.95)');
+    glow0.addColorStop(0.22,'rgba(255,220,150,0.55)');
+    glow0.addColorStop(0.55,'rgba(255,170,80,0.24)');
+    glow0.addColorStop(1.00,'rgba(255,130,40,0.00)');
+    g.fillStyle = glow0;
+    g.beginPath(); g.arc(mx,my,R*4.2,0,TAU); g.fill();
+    g.restore();
+
+    // Corona con “espículas” (rayos irregulares, suaves)
+    g.save();
+    g.globalCompositeOperation = 'screen';
+    g.translate(mx, my);
+    g.globalAlpha = 0.20;
+    g.lineCap = 'round';
+    for(let i=0;i<58;i++){
+      const a = (i/58)*TAU + 0.08;
+      const jitter = (pr()*2-1);
+      const len = R*(1.15 + pr()*1.15) * (0.75 + 0.25*Math.abs(Math.sin(i*0.9)));
+      const w = 0.8 + pr()*1.8;
+      g.lineWidth = w;
+      const warm = pr() < 0.55;
+      g.strokeStyle = warm ? 'rgba(255,210,130,0.55)' : 'rgba(255,170,90,0.42)';
+      g.beginPath();
+      const r0 = R*1.02;
+      g.moveTo(Math.cos(a)*r0, Math.sin(a)*r0);
+      g.lineTo(Math.cos(a + jitter*0.02)*len, Math.sin(a + jitter*0.02)*len);
+      g.stroke();
+    }
+    g.restore();
+
+    // Disco del sol (gradiente + limb darkening)
+    g.save();
+    const core = g.createRadialGradient(mx, my, R*0.06, mx, my, R*1.02);
+    core.addColorStop(0.00,'rgba(255,255,240,1.00)');
+    core.addColorStop(0.32,'rgba(255,238,185,1.00)');
+    core.addColorStop(0.70,'rgba(255,205,120,1.00)');
+    core.addColorStop(1.00,'rgba(255,170,70,1.00)');
+    g.fillStyle = core;
+    g.beginPath(); g.arc(mx,my,R,0,TAU); g.fill();
+
+    // Limb darkening sutil (oscurece el borde un poco)
+    g.globalCompositeOperation = 'multiply';
+    const limb = g.createRadialGradient(mx, my, R*0.30, mx, my, R*1.05);
+    limb.addColorStop(0.00,'rgba(255,255,255,1.0)');
+    limb.addColorStop(0.70,'rgba(255,255,255,0.92)');
+    limb.addColorStop(1.00,'rgba(160,110,60,0.80)');
+    g.fillStyle = limb;
+    g.beginPath(); g.arc(mx,my,R,0,TAU); g.fill();
+
+    // Granulación + manchas (muy sutiles)
+    g.globalCompositeOperation = 'screen';
+    g.globalAlpha = 0.14;
+    g.fillStyle = 'rgba(255,255,255,0.65)';
+    for(let k=0;k<110;k++){
+      const a = pr()*TAU;
+      const rr = Math.sqrt(pr())*R*0.92;
+      const x = mx + Math.cos(a)*rr;
+      const y = my + Math.sin(a)*rr;
+      g.beginPath();
+      g.arc(x, y, 0.4 + pr()*1.4, 0, TAU);
+      g.fill();
     }
 
-    g.fillText(CONFIG.starText, W*0.5, H*0.28);
+    // Manchas solares: pequeños “parches” más oscuros
+    g.globalCompositeOperation = 'multiply';
+    g.globalAlpha = 0.10;
+    g.fillStyle = 'rgba(120,75,35,0.55)';
+    for(let s=0;s<8;s++){
+      const a = pr()*TAU;
+      const rr = Math.sqrt(pr())*R*0.55;
+      const x = mx + Math.cos(a)*rr;
+      const y = my + Math.sin(a)*rr;
+      const r = R*(0.05 + pr()*0.08);
+      g.beginPath();
+      g.arc(x, y, r, 0, TAU);
+      g.fill();
+    }
+
+    // Brillo de borde (rim light)
+    g.globalCompositeOperation = 'screen';
+    g.globalAlpha = 0.22;
+    g.strokeStyle = 'rgba(255,255,235,0.55)';
+    g.lineWidth = 1.2;
+    g.beginPath(); g.arc(mx,my,R*0.98,0,TAU); g.stroke();
+
     g.restore();
+
 
     g.save();
     g.globalAlpha = 0.045;
@@ -2218,7 +2279,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
 
     }
 
-    // Luna siempre encima del fondo (aunque el cielo esté cacheado)
+    // Sol siempre encima del fondo (aunque el cielo esté cacheado)
     drawMoon(t);
 
     if(CONFIG.reduceMotion && staticSkyOverlayCache){
@@ -3190,7 +3251,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     {dx: 0.42, hf:1.10, bs:0.94},
     {dx: 0.70, hf:1.02, bs:0.93},
   ];
-  const BLOOM_COLORS = ['#FFE36A','#FFD84A','#FFCF3A','#FFEA8A','#FFD24D','#FFF1A8'];
+  const BLOOM_COLORS = ['#6EC1FF','#3A86FF','#2F74E8','#8ED4FF','#4DA3FF','#B7E6FF'];
 
   let bouquet = [];
 
