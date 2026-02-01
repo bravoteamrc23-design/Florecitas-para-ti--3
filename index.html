@@ -108,7 +108,7 @@
     let s = (seed >>> 0) || 1;
     const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
 
-    const h = 212;                // azul
+    const h = 350 + (rnd()*14 - 7);  // rojo
     const sat = 78 + rnd()*14;    // 78..92
     const lit = 46 + rnd()*12;    // 46..58
     return hslToRgb(h, sat, lit);
@@ -187,7 +187,7 @@ function restartIntro(){
     crownStrength: 0.008,
 
     // Texto “en estrellas”
-    starText: 'Good morning darling <3',
+    starText: 'Moonlit flowers for you, my darling <3',
     starTextStrength: 0.95    ,
 
     // Rendimiento / calidad
@@ -588,6 +588,9 @@ window.addEventListener('keydown', (e) => {
   let staticSkyOverlayCache = null;
   let fieldCache = null;
   let fieldCacheKey = '';
+  let fieldBandCache = null;
+  let fieldBandCacheKey = '';
+
   let bushCache = null;
   let bushCacheKey = '';
   const bloomCache = new Map();
@@ -1035,45 +1038,69 @@ function drawMoon(t){
       return peak + w1 + w2 + w3 + r1 + r2;
     };
 
-    // Montañas lejanas (más arriba, tono azulado/oscuro)
+    // Montañas lejanas (mejoradas):
+    // - Más capas (profundidad real)
+    // - Silueta más fina (más puntos)
+    // - Nieve sutil en cumbres + textura ligera
+    // - Rim light más creíble (más fuerte hacia el lado de la luna)
     const mountains = [
-      {yEdge: H*0.60, yPeak: H*0.54, wav: H*0.020, bump:0.62, a:0.22, seed:1.1, jag:0.85, tint:[22,40,54]},
-      {yEdge: H*0.63, yPeak: H*0.56, wav: H*0.026, bump:0.56, a:0.26, seed:2.0, jag:0.95, tint:[16,34,46]},
-      {yEdge: H*0.66, yPeak: H*0.58, wav: H*0.030, bump:0.52, a:0.30, seed:2.9, jag:1.00, tint:[10,26,36]},
+      {yEdge: H*0.590, yPeak: H*0.515, wav: H*0.018, bump:0.70, a:0.16, seed:0.7, jag:0.76, tint:[34,60,82], snow:0.34},
+      {yEdge: H*0.612, yPeak: H*0.538, wav: H*0.022, bump:0.62, a:0.20, seed:1.4, jag:0.86, tint:[26,48,66], snow:0.26},
+      {yEdge: H*0.642, yPeak: H*0.558, wav: H*0.028, bump:0.56, a:0.24, seed:2.2, jag:0.96, tint:[18,38,52], snow:0.18},
+      {yEdge: H*0.673, yPeak: H*0.584, wav: H*0.033, bump:0.50, a:0.28, seed:3.0, jag:1.06, tint:[10,26,36], snow:0.12},
     ];
 
     for(let k=0;k<mountains.length;k++){
       const M = mountains[k];
-      const steps = 92;
+      const steps = 140;           // silueta más suave
       const pts = [];
 
-      // Gradient for mountain body
-      const grad = g.createLinearGradient(0, M.yPeak-40, 0, M.yEdge+140);
+      // Gradient for mountain body (más “atmosfera” arriba)
+      const grad = g.createLinearGradient(0, M.yPeak-60, 0, M.yEdge+170);
       grad.addColorStop(0, `rgba(${M.tint[0]},${M.tint[1]},${M.tint[2]},0.78)`);
-      grad.addColorStop(1, `rgba(0,0,0,0.62)`);
+      grad.addColorStop(0.55, `rgba(${Math.max(0,M.tint[0]-10)},${Math.max(0,M.tint[1]-14)},${Math.max(0,M.tint[2]-18)},0.62)`);
+      grad.addColorStop(1, `rgba(0,0,0,0.66)`);
 
-      g.save();
-      g.globalAlpha = M.a;
-      g.fillStyle = grad;
-
-      g.beginPath();
-      g.moveTo(0, H);
+      // Build profile points once (para todo)
       for(let i=0;i<=steps;i++){
         const x = (i/steps)*W;
         const y = profile(x, M.yEdge, M.yPeak, M.wav, M.bump, M.seed, M.jag);
         pts.push({x,y});
-        g.lineTo(x, y);
       }
+
+      // Mountain body
+      g.save();
+      g.globalAlpha = M.a;
+      g.fillStyle = grad;
+      g.beginPath();
+      g.moveTo(0, H);
+      for(const p of pts) g.lineTo(p.x, p.y);
       g.lineTo(W, H);
       g.closePath();
       g.fill();
       g.restore();
 
-      // Crevices: líneas oscuras sutiles (como “pliegues”)
+      // Haze per-layer (profundidad): cuanto más lejos, más neblina azul
+      g.save();
+      g.globalCompositeOperation = 'screen';
+      g.globalAlpha = 0.08 * (1 - k/(mountains.length-1));
+      const hz = g.createLinearGradient(0, M.yPeak-40, 0, M.yEdge+160);
+      hz.addColorStop(0, 'rgba(140,190,235,0.22)');
+      hz.addColorStop(1, 'rgba(0,0,0,0.0)');
+      g.fillStyle = hz;
+      g.beginPath();
+      g.moveTo(0, H);
+      for(const p of pts) g.lineTo(p.x, p.y);
+      g.lineTo(W, H);
+      g.closePath();
+      g.fill();
+      g.restore();
+
+      // Crevices: pliegues oscuros (mejor direccionados)
       if(q >= 2){
         g.save();
-        g.globalAlpha = 0.08 + 0.02*k;
-        g.strokeStyle = 'rgba(0,0,0,0.55)';
+        g.globalAlpha = 0.075 + 0.02*k;
+        g.strokeStyle = 'rgba(0,0,0,0.58)';
         g.lineWidth = 1.0;
         g.lineCap = 'round';
 
@@ -1085,28 +1112,84 @@ function drawMoon(t){
         g.closePath();
         g.clip();
 
-        const lines = 26 + k*10;
+        const lines = 22 + k*10;
         for(let n=0;n<lines;n++){
           const x0 = rnd()*W;
           const yTop = profile(x0, M.yEdge, M.yPeak, M.wav, M.bump, M.seed, M.jag);
-          const y0 = yTop + rnd()*((M.yEdge+160)-yTop);
-          const dx = (rnd()*2-1) * W*0.02;
-          const dy = (0.10 + rnd()*0.55) * H*0.10;
+          const y0 = yTop + rnd()*((M.yEdge+170)-yTop);
+
+          const tilt = (LIGHT.x - 0.5); // hacia la luna (derecha)
+          const dx = (0.6 + rnd()*1.0) * W*0.02 * (tilt>=0 ? 1 : -1);
+          const dy = (0.12 + rnd()*0.60) * H*0.095;
 
           g.beginPath();
           g.moveTo(x0, y0);
-          g.quadraticCurveTo(x0 + dx*0.6, y0 + dy*0.4, x0 + dx, y0 + dy);
+          g.quadraticCurveTo(x0 + dx*0.5, y0 + dy*0.45, x0 + dx, y0 + dy);
           g.stroke();
         }
         g.restore();
       }
 
-      // Rim light (luna): borde iluminado
+      // Nieve sutil en cumbres (solo arriba) + algo de “grano”
+      if(q >= 2 && M.snow > 0){
+        g.save();
+        // clip montaña
+        g.beginPath();
+        g.moveTo(0, H);
+        for(const p of pts) g.lineTo(p.x, p.y);
+        g.lineTo(W, H);
+        g.closePath();
+        g.clip();
+
+        // region alta (cerca del peak)
+        const ySnow = M.yPeak + (M.yEdge - M.yPeak)*0.34;
+        g.globalCompositeOperation = 'screen';
+        g.globalAlpha = 0.10 + M.snow*0.28;
+
+        const snowGrad = g.createLinearGradient(0, M.yPeak-50, 0, ySnow+130);
+        snowGrad.addColorStop(0, 'rgba(255,255,255,0.70)');
+        snowGrad.addColorStop(0.35, 'rgba(220,240,255,0.46)');
+        snowGrad.addColorStop(1, 'rgba(200,230,255,0.00)');
+        g.fillStyle = snowGrad;
+
+        const patches = 16 + Math.floor(10*(1 - k/(mountains.length-1)));
+        for(let p=0;p<patches;p++){
+          const x = rnd()*W;
+          const yR = profile(x, M.yEdge, M.yPeak, M.wav, M.bump, M.seed, M.jag);
+          if(yR > ySnow) continue;
+          const r = (W*0.008 + rnd()*W*0.020) * (1.10 - 0.18*k);
+          const ang = rnd()*0.9;
+          g.beginPath();
+          g.ellipse(x, yR + rnd()*18, r*1.35, r*0.85, ang, 0, TAU);
+          g.fill();
+        }
+
+        // grano leve (textura)
+        g.globalAlpha = 0.035 + 0.01*(1 - k/(mountains.length-1));
+        g.fillStyle = 'rgba(255,255,255,0.55)';
+        const grains = 260 + k*120;
+        for(let t=0;t<grains;t++){
+          const x = rnd()*W;
+          const y = M.yPeak + rnd()*((M.yEdge+160)-M.yPeak);
+          if(y < ySnow + 70) continue;
+          g.beginPath();
+          g.arc(x, y, 0.4 + rnd()*0.9, 0, TAU);
+          g.fill();
+        }
+
+        g.restore();
+      }
+
+      // Rim light (luna): más fuerte hacia la derecha
       g.save();
       g.globalCompositeOperation = 'screen';
-      g.globalAlpha = 0.10 + 0.04*k;
-      g.strokeStyle = 'rgba(210,240,255,0.22)';
-      g.lineWidth = 1.3;
+      g.globalAlpha = 0.10 + 0.05*k;
+      const rim = g.createLinearGradient(W*0.10, 0, W, 0);
+      rim.addColorStop(0.00, 'rgba(210,240,255,0.00)');
+      rim.addColorStop(0.58, 'rgba(210,240,255,0.18)');
+      rim.addColorStop(1.00, 'rgba(210,240,255,0.34)');
+      g.strokeStyle = rim;
+      g.lineWidth = 1.2 + 0.7*(k/(mountains.length-1));
       g.lineJoin = 'round';
       g.lineCap = 'round';
       g.beginPath();
@@ -1323,6 +1406,47 @@ function drawMoon(t){
 
     fieldCache = off;
   }
+
+  function rebuildFieldBandCache(){
+    // Campo/montañas dibujados SIN cortes: aplicamos una máscara vertical suave en un canvas auxiliar
+    rebuildFieldCache();
+    const q = CONFIG.quality || 2;
+    const key = `${W}x${H}@d${DPR.toFixed(2)}@q${q}`;
+    if(fieldBandCache && fieldBandCacheKey === key) return;
+    fieldBandCacheKey = key;
+
+    const off = document.createElement('canvas');
+    off.width  = Math.floor(W * DPR);
+    off.height = Math.floor(H * DPR);
+    const g = off.getContext('2d', {alpha:true});
+    g.setTransform(DPR,0,0,DPR,0,0);
+    g.clearRect(0,0,W,H);
+
+    if(fieldCache){
+      g.drawImage(fieldCache, 0, 0, fieldCache.width / DPR, fieldCache.height / DPR);
+    }
+
+    // Máscara: entra suave, se mantiene, sale suave (elimina el “corte”)
+    const top = H*0.46;
+    const inY = H*0.52;
+    const outY= H*0.74;  // cerca del inicio del pasto
+    const bot = H*0.82;
+
+    g.globalCompositeOperation = 'destination-in';
+    const mask = g.createLinearGradient(0, top, 0, bot);
+    const aIn  = (inY - top) / (bot - top);
+    const aOut = (outY - top) / (bot - top);
+    mask.addColorStop(0.0, 'rgba(0,0,0,0)');
+    mask.addColorStop(Math.max(0.01, Math.min(0.35, aIn)),  'rgba(0,0,0,1)');
+    mask.addColorStop(Math.max(0.55, Math.min(0.90, aOut)), 'rgba(0,0,0,1)');
+    mask.addColorStop(1.0, 'rgba(0,0,0,0)');
+
+    g.fillStyle = mask;
+    g.fillRect(0, top-80, W, (bot-top)+160);
+
+    fieldBandCache = off;
+  }
+
 
 
 
@@ -1697,8 +1821,11 @@ function drawMoon(t){
       [5,7],[7,4]
     ];
 
-    const toX = (p)=>(1 - p.x)*W;
-    const toY = (p)=>p.y*H;
+    const XOFF = -0.08; // desplaza a la izquierda (evita chocar con la luna)
+    const YOFF = -0.12; // sube la constelación (por encima del mensaje)
+
+    const toX = (p)=>clamp((1 - p.x) + XOFF, 0.02, 0.98)*W;
+    const toY = (p)=>clamp(p.y + YOFF, 0.02, 0.60)*H;
 
     g.save();
     g.globalCompositeOperation = 'screen';
@@ -1706,8 +1833,8 @@ function drawMoon(t){
     g.lineJoin = 'round';
 
     // Bruma suave detrás para integrarlo (muy sutil)
-    const cx = W*0.70, cy = H*0.25;
-    const haze = g.createRadialGradient(cx, cy, 10, cx, cy, Math.min(W,H)*0.22);
+    const cx = W*0.66, cy = H*0.14;
+    const haze = g.createRadialGradient(cx, cy, 10, cx, cy, Math.min(W,H)*0.18);
     haze.addColorStop(0, 'rgba(200,220,255,0.06)');
     haze.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = haze;
@@ -1866,112 +1993,121 @@ const neb = (x,y,r, a, cr,cg,cb) => {
 
     
 
-    // Sol (mejorado): disco con limb-darkening, corona con espículas y textura suave
+
+    // Capa de nubes (estática en cache): suave, semitransparente, deja ver estrellas
+    
+    // Nubes (mejoradas): 4 capas, densidad con ruido suave, bordes difuminados y variación de grosor
+    // Objetivo: que se vean orgánicas sin tapar estrellas, y sin matar FPS.
+    
+    // Nubes (pocas y dispersas): pequeñas, separadas y con mucha transparencia (no tapan estrellas)
+    g.save();
+    g.globalCompositeOperation = 'screen';
+    g.globalAlpha = 0.13;
+
+    const cloudCount = 5;                 // pocas
+    for(let ci=0; ci<cloudCount; ci++){
+      const cx = W*(0.06 + pr()*0.88);
+      const cy = H*(0.04 + pr()*0.12);    // dispersas en el cielo (parte superior)
+      const w = Math.min(W,H) * (0.10 + pr()*0.08); // tamaño moderado
+      const h  = w * (0.45 + pr()*0.22);
+      const puff = 8 + Math.floor(pr()*6);
+
+      // gradiente suave (muy transparente)
+      const a = 0.07 + pr()*0.08;
+      const grd = g.createRadialGradient(cx, cy, w*0.05, cx, cy, w*0.55);
+      grd.addColorStop(0.0, `rgba(235,245,255,${a*1.05})`);
+      grd.addColorStop(0.55,`rgba(160,205,255,${a*0.55})`);
+      grd.addColorStop(1.0, `rgba(70,105,155,0.00)`);
+      g.fillStyle = grd;
+
+      // puffs para forma orgánica
+      for(let p=0;p<puff;p++){
+        const t = p/(puff-1);
+        const x = cx + (t-0.5)*w*(0.85 + pr()*0.20);
+        const y = cy + (pr()*2-1)*h*0.28 + Math.sin((t*TAU)+(pr()*0.8))*h*0.10;
+        const r = (w*0.05 + pr()*w*0.07) * (0.85 + 0.50*(1-Math.abs(t-0.5)*1.6));
+        g.beginPath();
+        g.ellipse(x, y, r, r*(0.70 + pr()*0.30), 0, 0, TAU);
+        g.fill();
+      }
+
+      // velo muy tenue (cuerpo)
+      g.save();
+      g.globalAlpha = 0.05;
+      g.fillStyle = `rgba(210,235,255,${a*0.75})`;
+      g.beginPath();
+      g.ellipse(cx, cy, w*0.48, h*0.90, 0, 0, TAU);
+      g.fill();
+      g.restore();
+
+      // sombra inferior mínima (profundidad)
+      g.save();
+      g.globalCompositeOperation = 'multiply';
+      g.globalAlpha = 0.06;
+      g.fillStyle = 'rgba(15,25,45,0.60)';
+      g.beginPath();
+      g.ellipse(cx, cy + h*0.16, w*0.36, h*0.62, 0, 0, TAU);
+      g.fill();
+      g.restore();
+    }
+
+    g.restore();
+
+    // Luna (vuelve): disco frío + brillo + cráteres sutiles
     const mx = W*LIGHT.x, my = H*LIGHT.y;
-    const R  = Math.min(W,H)*0.078;
+    const R  = Math.min(W,H)*0.070;
 
-    // Halo profundo (base)
+    // Glow lunar
     g.save();
     g.globalCompositeOperation = 'screen';
-    const glow0 = g.createRadialGradient(mx, my, R*0.25, mx, my, R*4.2);
-    glow0.addColorStop(0.00,'rgba(255,250,220,0.95)');
-    glow0.addColorStop(0.22,'rgba(255,220,150,0.55)');
-    glow0.addColorStop(0.55,'rgba(255,170,80,0.24)');
-    glow0.addColorStop(1.00,'rgba(255,130,40,0.00)');
-    g.fillStyle = glow0;
-    g.beginPath(); g.arc(mx,my,R*4.2,0,TAU); g.fill();
+    const mglow = g.createRadialGradient(mx, my, R*0.30, mx, my, R*3.0);
+    mglow.addColorStop(0.0, 'rgba(210,235,255,0.65)');
+    mglow.addColorStop(0.35,'rgba(140,190,235,0.22)');
+    mglow.addColorStop(1.0, 'rgba(80,120,170,0.00)');
+    g.fillStyle = mglow;
+    g.beginPath(); g.arc(mx,my,R*3.0,0,TAU); g.fill();
     g.restore();
 
-    // Corona con “espículas” (rayos irregulares, suaves)
+    // Disco lunar
     g.save();
-    g.globalCompositeOperation = 'screen';
-    g.translate(mx, my);
-    g.globalAlpha = 0.20;
-    g.lineCap = 'round';
-    for(let i=0;i<58;i++){
-      const a = (i/58)*TAU + 0.08;
-      const jitter = (pr()*2-1);
-      const len = R*(1.15 + pr()*1.15) * (0.75 + 0.25*Math.abs(Math.sin(i*0.9)));
-      const w = 0.8 + pr()*1.8;
-      g.lineWidth = w;
-      const warm = pr() < 0.55;
-      g.strokeStyle = warm ? 'rgba(255,210,130,0.55)' : 'rgba(255,170,90,0.42)';
+    const moon = g.createRadialGradient(mx-R*0.25, my-R*0.18, R*0.20, mx, my, R*1.05);
+    moon.addColorStop(0.0, 'rgba(250,252,255,1.0)');
+    moon.addColorStop(0.55,'rgba(225,235,245,1.0)');
+    moon.addColorStop(1.0, 'rgba(185,205,225,1.0)');
+    g.fillStyle = moon;
+    g.beginPath(); g.arc(mx,my,R,0,TAU); g.fill();
+
+    // Cráteres (clip dentro del disco)
+    g.save();
+    g.beginPath(); g.arc(mx,my,R,0,TAU); g.clip();
+    const cr = 16;
+    for(let k=0;k<cr;k++){
+      const a = pr()*TAU;
+      const rr = Math.sqrt(pr())*R*0.82;
+      const x = mx + Math.cos(a)*rr;
+      const y = my + Math.sin(a)*rr;
+      const r = R*(0.05 + pr()*0.12);
+
+      g.globalAlpha = 0.10 + pr()*0.10;
+      g.fillStyle = 'rgba(110,140,165,0.55)';
       g.beginPath();
-      const r0 = R*1.02;
-      g.moveTo(Math.cos(a)*r0, Math.sin(a)*r0);
-      g.lineTo(Math.cos(a + jitter*0.02)*len, Math.sin(a + jitter*0.02)*len);
-      g.stroke();
+      g.ellipse(x+r*0.18, y+r*0.14, r*1.02, r*0.82, a, 0, TAU);
+      g.fill();
+
+      g.globalAlpha = 0.10 + pr()*0.14;
+      g.fillStyle = 'rgba(255,255,255,0.60)';
+      g.beginPath();
+      g.ellipse(x-r*0.12, y-r*0.10, r*0.92, r*0.72, a, 0, TAU);
+      g.fill();
     }
     g.restore();
 
-    // Disco del sol (gradiente + limb darkening)
-    g.save();
-    const core = g.createRadialGradient(mx, my, R*0.06, mx, my, R*1.02);
-    core.addColorStop(0.00,'rgba(255,255,240,1.00)');
-    core.addColorStop(0.32,'rgba(255,238,185,1.00)');
-    core.addColorStop(0.70,'rgba(255,205,120,1.00)');
-    core.addColorStop(1.00,'rgba(255,170,70,1.00)');
-    g.fillStyle = core;
-    g.beginPath(); g.arc(mx,my,R,0,TAU); g.fill();
-
-    // Limb darkening sutil (oscurece el borde un poco)
-    g.globalCompositeOperation = 'multiply';
-    const limb = g.createRadialGradient(mx, my, R*0.30, mx, my, R*1.05);
-    limb.addColorStop(0.00,'rgba(255,255,255,1.0)');
-    limb.addColorStop(0.70,'rgba(255,255,255,0.92)');
-    limb.addColorStop(1.00,'rgba(160,110,60,0.80)');
-    g.fillStyle = limb;
-    g.beginPath(); g.arc(mx,my,R,0,TAU); g.fill();
-
-    // Granulación + manchas (muy sutiles)
-    g.globalCompositeOperation = 'screen';
-    g.globalAlpha = 0.14;
-    g.fillStyle = 'rgba(255,255,255,0.65)';
-    for(let k=0;k<110;k++){
-      const a = pr()*TAU;
-      const rr = Math.sqrt(pr())*R*0.92;
-      const x = mx + Math.cos(a)*rr;
-      const y = my + Math.sin(a)*rr;
-      g.beginPath();
-      g.arc(x, y, 0.4 + pr()*1.4, 0, TAU);
-      g.fill();
-    }
-
-    // Manchas solares: pequeños “parches” más oscuros
-    g.globalCompositeOperation = 'multiply';
-    g.globalAlpha = 0.10;
-    g.fillStyle = 'rgba(120,75,35,0.55)';
-    for(let s=0;s<8;s++){
-      const a = pr()*TAU;
-      const rr = Math.sqrt(pr())*R*0.55;
-      const x = mx + Math.cos(a)*rr;
-      const y = my + Math.sin(a)*rr;
-      const r = R*(0.05 + pr()*0.08);
-      g.beginPath();
-      g.arc(x, y, r, 0, TAU);
-      g.fill();
-    }
-
-    // Brillo de borde (rim light)
     g.globalCompositeOperation = 'screen';
     g.globalAlpha = 0.22;
-    g.strokeStyle = 'rgba(255,255,235,0.55)';
-    g.lineWidth = 1.2;
+    g.strokeStyle = 'rgba(255,255,255,0.55)';
+    g.lineWidth = 1.1;
     g.beginPath(); g.arc(mx,my,R*0.98,0,TAU); g.stroke();
 
-    g.restore();
-
-
-    g.save();
-    g.globalAlpha = 0.045;
-    g.fillStyle = 'rgba(255,255,255,0.06)';
-    const n = clamp(Math.floor((W*H)/14000), 220, 520);
-    const prG = makePRNG((W*1597334677) ^ (H*3812015801));
-    for(let i=0;i<n;i++){
-      const x = prG()*W;
-      const y = prG()*(H*0.72);
-      g.fillRect(x,y,1,1);
-    }
     g.restore();
 
     const vg = g.createRadialGradient(W*0.5, H*0.55, Math.min(W,H)*0.18, W*0.5, H*0.55, Math.max(W,H)*0.98);
@@ -2269,6 +2405,32 @@ const neb = (x,y,r, a, cr,cg,cb) => {
 
     if(skyCache){
       ctx.drawImage(skyCache, 0, 0, skyCache.width / DPR, skyCache.height / DPR);
+
+      // wisps dinámicos (muy ligeros): pocas nubes altas, súper sutiles
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const tt = t*0.000016;
+      ctx.globalAlpha = 0.032;
+      const baseAlphaWisp = ctx.globalAlpha;
+      for(let i=0;i<3;i++){
+        const x = (W*(0.18 + i*0.32) + (Math.sin(tt*2.6 + i)*W*0.08)) % (W+160) - 80;
+        const y = H*(0.05 + 0.10*Math.abs(Math.sin(tt*1.9 + i*1.4))); // 0.05..0.15
+        const w = Math.min(W,H)*(0.12 + 0.03*Math.sin(tt*2.0 + i));
+        const h = w*0.42;
+        // evita que suba demasiado hacia el mensaje
+        const fade = clamp(1 - (y - H*0.16)/(H*0.10), 0, 1);
+        if(fade <= 0.01) continue;
+        ctx.globalAlpha = baseAlphaWisp * fade;
+        const grd = ctx.createRadialGradient(x, y, w*0.08, x, y, w*0.72);
+        grd.addColorStop(0.0, 'rgba(230,245,255,0.14)');
+        grd.addColorStop(0.6, 'rgba(150,205,255,0.06)');
+        grd.addColorStop(1.0, 'rgba(60,95,150,0.00)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.ellipse(x, y, w, h, 0, 0, TAU);
+        ctx.fill();
+      }
+      ctx.restore();
     }else{
       const sky = ctx.createLinearGradient(0, 0, 0, H);
       sky.addColorStop(0, 'rgba(12,14,46,1)');
@@ -3293,21 +3455,16 @@ bouquet = DESCS.map((p,i)=>{
     ctx.fillRect(0,0,W,H);
 
     // Campo de flores al fondo (detrás del arbusto y por encima del suelo)
-    rebuildFieldCache();
-    if(fieldCache){
+    rebuildFieldBandCache();
+    if(fieldBandCache){
       ctx.save();
-      // Solo franja media: evita tapar el pasto del primer plano
-      const topBand = H*0.50;
-      const botBand = H*0.74; // coincide con el inicio del suelo/pasto
-      ctx.beginPath();
-      ctx.rect(0, topBand, W, botBand - topBand);
-      ctx.clip();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha *= 0.95; // visible pero sin “aplastar” la noche
-      ctx.drawImage(fieldCache, 0, 0, fieldCache.width / DPR, fieldCache.height / DPR);
+      ctx.drawImage(fieldBandCache, 0, 0, fieldBandCache.width / DPR, fieldBandCache.height / DPR);
       ctx.restore();
     }
-    // Arbusto: base cacheada + borde suave (sin tapar el campo ni borrar el césped)
+
+// Arbusto: base cacheada + borde suave (sin tapar el campo ni borrar el césped)
     rebuildBushCache();
     if(bushCache){
       const bushTop = H*0.78;
