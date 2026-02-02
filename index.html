@@ -104,13 +104,15 @@
 
   // Color aleatorio pero estable por semilla (así cada gerbera "nace" con su propio tono)
   const colorFromSeed = (seed)=>{
-    // Azul (con variación mínima para que no se vea plano).
+    // Blanco (con matiz frío/cálido sutil para que no se vea plano).
     let s = (seed >>> 0) || 1;
     const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
 
-    const h = 350 + (rnd()*14 - 7);  // rojo
-    const sat = 78 + rnd()*14;    // 78..92
-    const lit = 46 + rnd()*12;    // 46..58
+    // Hue cerca de 210 (frío) a 40 (cálido) muy leve, saturación baja, luz alta.
+    const mix = rnd();                 // 0..1
+    const h = 210*(1-mix) + 40*mix;    // 40..210
+    const sat = 6 + rnd()*10;          // 6..16
+    const lit = 86 + rnd()*8;          // 86..94
     return hslToRgb(h, sat, lit);
   };
 
@@ -3405,13 +3407,14 @@ const neb = (x,y,r, a, cr,cg,cb) => {
 
 // ===== Bouquet =====
   const DESCS = [
-    // 6 gerberas: abanico limpio, sin encimar (dx = separación horizontal, hf = altura del tallo, bs = escala de la flor)
-    {dx:-0.70, hf:1.02, bs:0.93},
-    {dx:-0.42, hf:1.10, bs:0.94},
-    {dx:-0.16, hf:1.18, bs:0.95},
-    {dx: 0.16, hf:1.18, bs:0.95},
-    {dx: 0.42, hf:1.10, bs:0.94},
-    {dx: 0.70, hf:1.02, bs:0.93},
+    // 6 gerberas: abanico más abierto (más separación) para que no se encimen
+    // dx = separación horizontal, hf = altura del tallo, bs = escala de la flor
+    {dx:-0.86, hf:1.00, bs:0.90},
+    {dx:-0.52, hf:1.08, bs:0.92},
+    {dx:-0.18, hf:1.16, bs:0.94},
+    {dx: 0.18, hf:1.16, bs:0.94},
+    {dx: 0.52, hf:1.08, bs:0.92},
+    {dx: 0.86, hf:1.00, bs:0.90},
   ];
   const BLOOM_COLORS = ['#6EC1FF','#3A86FF','#2F74E8','#8ED4FF','#4DA3FF','#B7E6FF'];
 
@@ -3421,12 +3424,12 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     const cx = W*0.5;
     const baseY = H*0.93;
     const scaleBase = lerp(0.74, 1.12, clamp(Math.min(W, H)/820, 0, 1));
-    const spread = Math.min(W*0.48, 250 + W*0.06);
+    const spread = Math.min(W*0.62, 320 + W*0.08);
 bouquet = DESCS.map((p,i)=>{
       const scale = scaleBase * p.bs;
-      const bw = (40 + ((i%3)-1)*2) * scale;
-      const bh = (86 + ((i%4)-2)*4) * scale;
-      const twist = p.dx * 0.12;
+      const bw = (36 + ((i%3)-1)*2) * scale;
+      const bh = (82 + ((i%4)-2)*3) * scale;
+      const twist = p.dx * 0.09;
 
       return {
         i,
