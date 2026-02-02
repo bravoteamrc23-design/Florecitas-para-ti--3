@@ -148,6 +148,65 @@ function strokeCubicPartial(x0,y0,x1,y1,x2,y2,x3,y3,u, stepsMax=28){
     y: cubic(uu, y0,y1,y2,y3)
   };
 }
+// ---- Helpers: tallos con taper + detalle ----
+function cubicD(t, a,b,c,d){
+  const u = 1 - t;
+  return 3*u*u*(b - a) + 6*u*t*(c - b) + 3*t*t*(d - c);
+}
+function pointOnCubic(t, x0,y0,x1,y1,x2,y2,x3,y3){
+  return { x: cubic(t, x0,x1,x2,x3), y: cubic(t, y0,y1,y2,y3) };
+}
+function normalOnCubic(t, x0,y0,x1,y1,x2,y2,x3,y3){
+  const dx = cubicD(t, x0,x1,x2,x3);
+  const dy = cubicD(t, y0,y1,y2,y3);
+  const len = Math.hypot(dx, dy) || 1;
+  const tx = dx/len, ty = dy/len;
+  return { tx, ty, nx: -ty, ny: tx, ang: Math.atan2(ty, tx) };
+}
+// Dibuja una cúbica hasta u con grosor variable (taper). Mantiene el mismo strokeStyle para ser rápido.
+function strokeCubicTaperPartial(x0,y0,x1,y1,x2,y2,x3,y3,u,w0,w1, stepsMax=34){
+  const uu = clamp(u, 0, 1);
+  const steps = Math.max(3, Math.floor(stepsMax * uu));
+  let px = x0, py = y0;
+  for(let i=1;i<=steps;i++){
+    const tt = uu * (i/steps);
+    const x = cubic(tt, x0,x1,x2,x3);
+    const y = cubic(tt, y0,y1,y2,y3);
+    const k = (i/steps);
+    // taper suave: más grueso abajo, más delgado arriba
+    const w = lerp(w0, w1, smoothstep(0.0, 1.0, k));
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    px = x; py = y;
+  }
+  return {x:px, y:py};
+}
+function drawStemNode(tt, x0,y0,x1,y1,x2,y2,x3,y3, r, alpha=0.10){
+  const p = pointOnCubic(tt, x0,y0,x1,y1,x2,y2,x3,y3);
+  const n = normalOnCubic(tt, x0,y0,x1,y1,x2,y2,x3,y3);
+
+  ctx.save();
+  // sombra del nodo
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  ctx.beginPath();
+  ctx.ellipse(p.x - n.nx*r*0.35, p.y - n.ny*r*0.35, r*1.10, r*0.55, n.ang, 0, TAU);
+  ctx.fill();
+
+  // brillo leve del nodo (lado luna)
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = alpha*0.75;
+  ctx.fillStyle = 'rgba(210,255,230,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(p.x + n.nx*r*0.28, p.y + n.ny*r*0.28, r*0.88, r*0.42, n.ang, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+}
+
 
 function restartIntro(){
   INTRO.active = true;
@@ -388,7 +447,7 @@ window.addEventListener('keydown', (e) => {
   const tapSparkles = [];
 
   // Luz “luna” coherente (arriba-derecha)
-  const LIGHT = { x: 0.82, y: 0.14 };
+  const LIGHT = { x:0.18, y:0.14 };
   const LIGHT_DIR = (() => {
     const dx = 0.74, dy = -0.52;
     const inv = 1 / Math.max(1e-6, Math.hypot(dx,dy));
@@ -3407,14 +3466,13 @@ const neb = (x,y,r, a, cr,cg,cb) => {
 
 // ===== Bouquet =====
   const DESCS = [
-    // 6 gerberas: abanico más abierto (más separación) para que no se encimen
-    // dx = separación horizontal, hf = altura del tallo, bs = escala de la flor
-    {dx:-0.86, hf:1.00, bs:0.90},
-    {dx:-0.52, hf:1.08, bs:0.92},
-    {dx:-0.18, hf:1.16, bs:0.94},
-    {dx: 0.18, hf:1.16, bs:0.94},
-    {dx: 0.52, hf:1.08, bs:0.92},
-    {dx: 0.86, hf:1.00, bs:0.90},
+    // 6 gerberas: ramo más junto (compacto) pero sin encimar pétalos
+    {dx:-0.62, hf:0.98, bs:0.82},
+    {dx:-0.40, hf:1.08, bs:0.92},
+    {dx:-0.14, hf:1.16, bs:0.94},
+    {dx: 0.14, hf:1.16, bs:0.94},
+    {dx: 0.40, hf:1.08, bs:0.92},
+    {dx: 0.62, hf:0.98, bs:0.82},
   ];
   const BLOOM_COLORS = ['#6EC1FF','#3A86FF','#2F74E8','#8ED4FF','#4DA3FF','#B7E6FF'];
 
@@ -3424,7 +3482,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     const cx = W*0.5;
     const baseY = H*0.93;
     const scaleBase = lerp(0.74, 1.12, clamp(Math.min(W, H)/820, 0, 1));
-    const spread = Math.min(W*0.62, 320 + W*0.08);
+    const spread = Math.min(W*0.52, 280 + W*0.06);
 bouquet = DESCS.map((p,i)=>{
       const scale = scaleBase * p.bs;
       const bw = (36 + ((i%3)-1)*2) * scale;
@@ -3572,50 +3630,78 @@ const STEM = {r:55,g:155,b:92};
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      const stemW = 7.0 * f.scale;
+      // Variación sutil por tallo (evita que todos sean el mismo “tubo”)
+      let ss = (f.seed * 1664525 + 1013904223) >>> 0;
+      const jr = (ss / 4294967296) - 0.5; // -0.5..0.5
+
+      const STEMa = {
+        r: clamp(STEM.r  + jr*10, 20, 90),
+        g: clamp(STEM.g  + jr*14, 70, 190),
+        b: clamp(STEM.b  + jr*10, 40, 140)
+      };
+      const STEMb = {
+        r: clamp(STEM2.r + jr*12, 10, 80),
+        g: clamp(STEM2.g + jr*14, 50, 170),
+        b: clamp(STEM2.b + jr*12, 25, 120)
+      };
+
+      const wBase = 7.2 * f.scale;
+      const wTip  = 3.6 * f.scale;
 
       const sg = ctx.createLinearGradient(baseX, baseY, endP.x, endP.y);
-      sg.addColorStop(0.00, rgba(STEM2.r, STEM2.g, STEM2.b, 0.10));
-      sg.addColorStop(0.10, rgba(STEM2.r, STEM2.g, STEM2.b, 0.45));
-      sg.addColorStop(0.32, rgba(STEM.r,  STEM.g,  STEM.b,  0.95));
-      sg.addColorStop(1.00, rgba(STEM.r,  STEM.g,  STEM.b,  0.95));
+      sg.addColorStop(0.00, rgba(STEMb.r, STEMb.g, STEMb.b, 0.10));
+      sg.addColorStop(0.12, rgba(STEMb.r, STEMb.g, STEMb.b, 0.55));
+      sg.addColorStop(0.34, rgba(STEMa.r, STEMa.g, STEMa.b, 0.95));
+      sg.addColorStop(1.00, rgba(STEMa.r, STEMa.g, STEMa.b, 0.95));
 
+      // Cuerpo con taper
       ctx.strokeStyle = sg;
-      ctx.lineWidth = stemW;
+      strokeCubicTaperPartial(baseX, baseY, cp1x, cp1y, cp2x, cp2y, bloomXFull, bloomYFull, stemU, wBase, wTip, 34);
 
-      strokeCubicPartial(baseX, baseY, cp1x, cp1y, cp2x, cp2y, bloomXFull, bloomYFull, stemU);
+      // “Nervio” interno oscuro (da profundidad)
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = 0.10;
+      ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+      strokeCubicTaperPartial(baseX, baseY, cp1x, cp1y, cp2x, cp2y, bloomXFull, bloomYFull, stemU, wBase*0.38, Math.max(1, wTip*0.42), 28);
+      ctx.restore();
 
-
-      // volumen del tallo: sombra (lado opuesto a la luna) + brillo (lado de la luna)
-      const offX = LIGHT_DIR.x * stemW * 0.22;
-      const offY = LIGHT_DIR.y * stemW * 0.22;
+      // Volumen del tallo: sombra (lado opuesto a la luna) + brillo (lado de la luna)
+      const offX = LIGHT_DIR.x * wBase * 0.22;
+      const offY = LIGHT_DIR.y * wBase * 0.22;
 
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
-      ctx.globalAlpha = 0.18;
+      ctx.globalAlpha = 0.16;
       ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-      ctx.lineWidth = stemW * 0.55;
-      strokeCubicPartial(baseX - offX, baseY - offY, cp1x - offX, cp1y - offY, cp2x - offX, cp2y - offY, bloomXFull - offX, bloomYFull - offY, stemU);
+      strokeCubicTaperPartial(baseX - offX, baseY - offY, cp1x - offX, cp1y - offY, cp2x - offX, cp2y - offY, bloomXFull - offX, bloomYFull - offY, stemU, wBase*0.55, wTip*0.55, 26);
       ctx.restore();
 
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = 0.16;
-      ctx.strokeStyle = 'rgba(210,255,230,0.55)';
-      ctx.lineWidth = Math.max(1, stemW * 0.28);
-      strokeCubicPartial(baseX + offX*0.75, baseY + offY*0.75, cp1x + offX*0.75, cp1y + offY*0.75, cp2x + offX*0.75, cp2y + offY*0.75, bloomXFull + offX*0.75, bloomYFull + offY*0.75, stemU);
+      ctx.globalAlpha = 0.14;
+      ctx.strokeStyle = 'rgba(210,255,230,0.60)';
+      strokeCubicTaperPartial(baseX + offX*0.70, baseY + offY*0.70, cp1x + offX*0.70, cp1y + offY*0.70, cp2x + offX*0.70, cp2y + offY*0.70, bloomXFull + offX*0.70, bloomYFull + offY*0.70, stemU, Math.max(1, wBase*0.22), Math.max(1, wTip*0.20), 24);
       ctx.restore();
 
+      // Nodos sutiles (pequeñas “juntas” del tallo)
+      if(stemU > 0.40){
+        drawStemNode(Math.min(stemU, 0.42), baseX, baseY, cp1x, cp1y, cp2x, cp2y, bloomXFull, bloomYFull, 4.4*f.scale, 0.11);
+      }
+      if(stemU > 0.68){
+        drawStemNode(Math.min(stemU, 0.68), baseX, baseY, cp1x, cp1y, cp2x, cp2y, bloomXFull, bloomYFull, 4.0*f.scale, 0.10);
+      }
+
+      // Fade suave para integrarlo con el pasto (sin “corte” duro)
       const fadeH = 92 * f.scale;
       ctx.save();
       ctx.globalCompositeOperation = 'destination-out';
       const fg = ctx.createLinearGradient(0, baseY + 2, 0, baseY - fadeH);
-      fg.addColorStop(0.00, 'rgba(0,0,0,0.90)');
+      fg.addColorStop(0.00, 'rgba(0,0,0,0.85)');
       fg.addColorStop(0.55, 'rgba(0,0,0,0.22)');
       fg.addColorStop(1.00, 'rgba(0,0,0,0.00)');
       ctx.strokeStyle = fg;
-      ctx.lineWidth = stemW + 5.0 * f.scale;
-      strokeCubicPartial(baseX, baseY, cp1x, cp1y, cp2x, cp2y, bloomXFull, bloomYFull, stemU);
+      strokeCubicTaperPartial(baseX, baseY, cp1x, cp1y, cp2x, cp2y, bloomXFull, bloomYFull, stemU, wBase + 4.6*f.scale, wTip + 3.0*f.scale, 22);
       ctx.restore();
 
       ctx.restore();
