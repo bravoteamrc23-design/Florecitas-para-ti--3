@@ -1918,8 +1918,20 @@ function drawSun(t){
 
     const gx = W*0.5, gy = H*0.28;
     const fontHint = clamp(Math.min(W,H)*0.09, 26, 58);
+
+    // Backdrop oscuro suave para que el mensaje se lea sobre nubes/estrellas
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.28;
+    const bg = ctx.createRadialGradient(gx, gy, 0, gx, gy, fontHint*3.2);
+    bg.addColorStop(0.0, 'rgba(0,0,0,0.70)');
+    bg.addColorStop(0.55,'rgba(0,0,0,0.20)');
+    bg.addColorStop(1.0, 'rgba(0,0,0,0)');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
     const glow = ctx.createRadialGradient(gx, gy, 10, gx, gy, fontHint*7.5);
-    glow.addColorStop(0, 'rgba(210,230,255,0.09)');
+    glow.addColorStop(0, 'rgba(210,230,255,0.16)');
     glow.addColorStop(1, 'rgba(210,230,255,0)');
     ctx.globalAlpha = 1;
     ctx.fillStyle = glow;
@@ -1927,7 +1939,7 @@ function drawSun(t){
 
     for(const st of textStars){
       const tw = CONFIG.reduceMotion ? 1 : (0.78 + 0.22*Math.sin(t*0.0012*st.s + st.p));
-      const alpha = st.a * (0.75 + 0.55*tw);
+      const alpha = clamp(st.a * (0.95 + 0.85*tw), 0, 1);
 
       const x = st.x*W;
       const y = st.y*H;
@@ -1935,6 +1947,18 @@ function drawSun(t){
       ctx.globalAlpha = alpha;
       ctx.shadowColor = 'rgba(255,255,255,0.55)';
       ctx.shadowBlur = 9 + st.r*6;
+
+      // Sombra/contorno sutil para contraste (sobre nubes claras)
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = alpha * 0.18;
+      ctx.fillStyle = 'rgba(0,0,0,0.85)';
+      ctx.beginPath();
+      ctx.arc(x, y, st.r*1.55, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+
+
 
       ctx.fillStyle = st.hue ? `hsla(${st.hue}, 75%, 92%, 1)` : 'rgba(255,255,255,1)';
       ctx.beginPath();
@@ -1945,7 +1969,7 @@ function drawSun(t){
         ctx.save();
         ctx.shadowBlur = 0;
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = alpha * 0.40 * st.flare;
+        ctx.globalAlpha = alpha * 0.55 * st.flare;
         ctx.strokeStyle = 'rgba(255,255,255,0.55)';
         ctx.lineWidth = 1;
         const k = 3.0 + st.r*2.0;
