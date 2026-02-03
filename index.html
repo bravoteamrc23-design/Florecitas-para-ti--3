@@ -55,7 +55,7 @@
   </style>
 </head>
 <body>
-  <canvas id="c" role="img" aria-label="Animación de un ramo de gerberas rosadas bajo un cielo nocturno con estrellas, luna y la constelación de Capricornio"></canvas>
+  <canvas id="c" role="img" aria-label="Animación de un ramo de gerberas violetas bajo un cielo estrellado con nubes, sol y la constelación de Capricornio"></canvas>
   <script>
 (() => {
   'use strict';
@@ -104,15 +104,14 @@
 
   // Color aleatorio pero estable por semilla (así cada gerbera "nace" con su propio tono)
   const colorFromSeed = (seed)=>{
-    // Blanco (con matiz frío/cálido sutil para que no se vea plano).
+    // Violeta (con variación sutil por flor para que se vea natural).
     let s = (seed >>> 0) || 1;
     const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
 
-    // Hue cerca de 210 (frío) a 40 (cálido) muy leve, saturación baja, luz alta.
-    const mix = rnd();                 // 0..1
-    const h = 210*(1-mix) + 40*mix;    // 40..210
-    const sat = 6 + rnd()*10;          // 6..16
-    const lit = 86 + rnd()*8;          // 86..94
+    // Hue violeta ~ 270-300, saturación media-alta, luz media.
+    const h   = 285 + (rnd()*26 - 13);  // 272..298
+    const sat = 58 + rnd()*18;          // 58..76
+    const lit = 52 + rnd()*14;          // 52..66
     return hslToRgb(h, sat, lit);
   };
 
@@ -248,7 +247,7 @@ function restartIntro(){
     crownStrength: 0.008,
 
     // Texto “en estrellas”
-    starText: 'Moonlit flowers for you, my darling <3',
+    starText: 'Have great day my darling <3',
     starTextStrength: 0.95    ,
 
     // Rendimiento / calidad
@@ -843,6 +842,158 @@ function drawMoon(t){
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
 }
+function drawSun(t){
+  const r = Math.min(W,H) * 0.064;
+  const x = W * LIGHT.x;
+  const y = H * LIGHT.y;
+
+  // Aparición “generativa” (igual estilo que la luna)
+  const p = moonIntroProgress(t);
+
+  // Micro-ruido determinista rápido (sin Math.random en cada frame)
+  let s = ((Math.floor(t/33) ^ 0x9e3779b9) + 12345) >>> 0;
+  const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+
+  // 1) Halo principal (cálido) con falloff suave
+  const haloOuter = r * (2.6 + 10.5*p);
+  const halo = ctx.createRadialGradient(x, y, r*0.18, x, y, haloOuter);
+  halo.addColorStop(0.00, `rgba(255,250,230,${0.34*p})`);
+  halo.addColorStop(0.10, `rgba(255,220,150,${0.18*p})`);
+  halo.addColorStop(0.28, `rgba(255,175,90,${0.075*p})`);
+  halo.addColorStop(0.60, `rgba(255,120,55,${0.028*p})`);
+  halo.addColorStop(1.00, 'rgba(0,0,0,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(0,0,W,H);
+
+  // 2) “Corona” irregular: pequeñas lenguas de luz alrededor
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = 0.18 * p;
+  ctx.globalCompositeOperation = 'screen';
+  const coronaN = 34;
+  for(let i=0;i<coronaN;i++){
+    const a = (i/coronaN)*TAU + t*0.00022;
+    const len = r*(1.25 + 0.60*Math.sin(i*1.7 + t*0.0012));
+    const w   = r*(0.20 + 0.12*Math.sin(i*2.3 - t*0.0015));
+    const rr  = r*(1.02 + 0.10*Math.sin(i*3.1 + t*0.001));
+    const gx  = Math.cos(a)*rr;
+    const gy  = Math.sin(a)*rr;
+
+    const g = ctx.createRadialGradient(gx, gy, r*0.03, gx, gy, len);
+    g.addColorStop(0.0, 'rgba(255,235,175,0.40)');
+    g.addColorStop(0.35,'rgba(255,190,115,0.18)');
+    g.addColorStop(1.0, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+
+    ctx.beginPath();
+    ctx.ellipse(gx, gy, len*0.55, w, a, 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 3) Rayos suaves (tipo acuarela), animados muy lento
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(t*0.00010);
+  ctx.globalAlpha = 0.11 * p;
+  ctx.strokeStyle = 'rgba(255,210,140,0.55)';
+  ctx.lineCap = 'round';
+  const rayN = 20;
+  for(let i=0;i<rayN;i++){
+    const a = (i/rayN)*TAU;
+    const base = r*(1.10 + 0.06*Math.sin(i*2.1));
+    const tip  = r*(2.35 + 0.35*Math.sin(i*1.9 + t*0.001));
+    const lw   = 1.2 + 1.0*(0.5 + 0.5*Math.sin(i*1.3));
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*base, Math.sin(a)*base);
+    ctx.lineTo(Math.cos(a)*tip,  Math.sin(a)*tip);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 4) Disco del sol: gradiente con “hot core” y borde más naranja
+  // Clip de aparición (para el efecto generativo)
+  if(p < 1){
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r * clamp(p*1.02, 0, 1), 0, TAU);
+    ctx.clip();
+  }
+
+  const sun = ctx.createRadialGradient(x - r*0.22, y - r*0.18, r*0.08, x, y, r*1.10);
+  sun.addColorStop(0.00, 'rgba(255,255,250,1.0)');
+  sun.addColorStop(0.40, 'rgba(255,246,190,1.0)');
+  sun.addColorStop(0.72, 'rgba(255,205,120,1.0)');
+  sun.addColorStop(1.00, 'rgba(255,145,55,1.0)');
+  ctx.fillStyle = sun;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, TAU);
+  ctx.fill();
+
+  // 5) Textura: granulación sutil + sunspots suaves
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.globalAlpha = 0.10 * p;
+  ctx.fillStyle = 'rgba(120,70,30,0.35)';
+
+  const spots = 7;
+  for(let i=0;i<spots;i++){
+    const a = rnd()*TAU;
+    const rr = r*(0.10 + rnd()*0.65);
+    const sx = x + Math.cos(a)*rr;
+    const sy = y + Math.sin(a)*rr;
+    const sr = r*(0.05 + rnd()*0.10);
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, sr*(1.2+rnd()*0.6), sr*(0.8+rnd()*0.5), rnd()*0.8, 0, TAU);
+    ctx.fill();
+  }
+
+  // grano muy fino
+  ctx.globalAlpha = 0.06 * p;
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  const grains = 40;
+  for(let i=0;i<grains;i++){
+    const a = rnd()*TAU;
+    const rr = r*(0.08 + rnd()*0.88);
+    const gx = x + Math.cos(a)*rr;
+    const gy = y + Math.sin(a)*rr;
+    const gr = r*(0.008 + rnd()*0.016);
+    ctx.beginPath();
+    ctx.arc(gx, gy, gr, 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 6) Rim light (borde brillante) para que “recorte” bien contra el cielo
+  ctx.save();
+  ctx.globalAlpha = 0.22 * p;
+  ctx.strokeStyle = 'rgba(255,255,245,0.65)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(x, y, r*1.01, 0, TAU);
+  ctx.stroke();
+  ctx.restore();
+
+  if(p < 1){
+    ctx.restore(); // clip
+    // Trazo “tipo generación” (borde que se completa)
+    ctx.globalAlpha = 0.55 * (0.35 + 0.65*p);
+    ctx.strokeStyle = 'rgba(255,245,215,0.75)';
+    ctx.lineWidth = 1.9;
+    ctx.beginPath();
+    ctx.arc(x, y, r*1.04, -Math.PI/2, -Math.PI/2 + TAU*p);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
 
 
   function seedSoil(){
@@ -2503,7 +2654,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     }
 
     // Sol siempre encima del fondo (aunque el cielo esté cacheado)
-    drawMoon(t);
+    drawSun(t);
 
     if(CONFIG.reduceMotion && staticSkyOverlayCache){
       ctx.drawImage(staticSkyOverlayCache, 0, 0, staticSkyOverlayCache.width / DPR, staticSkyOverlayCache.height / DPR);
