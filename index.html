@@ -4,6 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Ramo de gerberas (noche)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Dancing+Script:wght@500;600;700&display=swap" rel="stylesheet">
+
   <style>
     :root{
       --bg1:#070814;
@@ -52,13 +57,193 @@
     }
   
     #hud{display:none !important;}
+  
+
+    
+    /* Intro screen: shown before starting the animation (tap/click to begin)
+       "Carta" style: handwriting font + romantic paper background. */
+    canvas{opacity:0; transform:scale(1.01); filter:blur(1px); transition: opacity 1400ms cubic-bezier(0.2,0.8,0.2,1), transform 1400ms cubic-bezier(0.2,0.8,0.2,1), filter 1400ms cubic-bezier(0.2,0.8,0.2,1);}
+    body.scene-ready canvas{opacity:1; transform:scale(1); filter:blur(0px);}
+
+    #introScreen{
+      position:fixed;
+      inset:0;
+      z-index:5;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      cursor:pointer;
+      background:
+        radial-gradient(980px 720px at 50% 8%, rgba(255,204,224,0.88), rgba(255,204,224,0.0) 62%),
+        radial-gradient(840px 620px at 18% 90%, rgba(255,176,206,0.62), rgba(255,176,206,0.0) 64%),
+        radial-gradient(760px 560px at 85% 75%, rgba(214,180,255,0.30), rgba(214,180,255,0.0) 66%),
+        linear-gradient(180deg, rgba(255,252,248,0.99), rgba(255,236,246,0.97));
+      transition: opacity 1200ms cubic-bezier(0.2,0.8,0.2,1), transform 1200ms cubic-bezier(0.2,0.8,0.2,1), filter 1200ms cubic-bezier(0.2,0.8,0.2,1);
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action: manipulation;
+    }
+
+    /* Subtle "paper lines" texture */
+    #introScreen::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(160,120,140,0.06) 0px,
+          rgba(160,120,140,0.06) 1px,
+          rgba(0,0,0,0.0) 10px,
+          rgba(0,0,0,0.0) 22px
+        );
+      opacity:0.55;
+      mix-blend-mode:multiply;
+      pointer-events:none;
+    }
+
+    /* Tiny hearts watermark pattern */
+    #introScreen::after{
+      content:"";
+      position:absolute;
+      inset:-40px;
+      background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2264%22%20height%3D%2264%22%20viewBox%3D%220%200%2064%2064%22%3E%0A%20%20%3Cpath%20d%3D%22M32%2054s-19-11.4-26-23.5C-0.4%2017.8%208.1%208.5%2018.4%209.2c6.2.4%2010.5%204.1%2013.6%208.4%203.1-4.3%207.4-8%2013.6-8.4%2010.3-.7%2018.8%208.6%2012.4%2021.3C51%2042.6%2032%2054%2032%2054z%22%0A%20%20%20%20%20%20%20%20fill%3D%22%23d65a86%22%20fill-opacity%3D%220.14%22/%3E%0A%3C/svg%3E");
+      background-size: 86px 86px;
+      background-repeat: repeat;
+      opacity:0.40;
+      transform: rotate(-6deg);
+      pointer-events:none;
+      mix-blend-mode:multiply;
+    }
+
+    #introScreen.hide{
+      opacity:0;
+      transform: translateY(-18px) scale(0.985);
+      filter: blur(10px);
+      pointer-events:none;
+    }
+
+    #introScreen .card{
+      position:relative;
+      width:min(720px, calc(100vw - 48px));
+      padding:26px 22px 22px;
+      border-radius:26px;
+      background:
+        radial-gradient(980px 260px at 50% 0%, rgba(255,210,230,0.55), rgba(255,210,230,0.0) 64%),
+        linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,246,252,0.92));
+      border: 1px solid rgba(150,95,120,0.25);
+      box-shadow: 0 22px 70px rgba(35,10,25,0.20);
+      text-align:center;
+      overflow:hidden;
+    }
+
+    /* Paper grain */
+    #introScreen .card::before{
+      content:"";
+      position:absolute;
+      inset:-40px;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(120,80,95,0.07), rgba(0,0,0,0.0) 50%),
+        radial-gradient(circle at 80% 70%, rgba(120,80,95,0.06), rgba(0,0,0,0.0) 52%),
+        repeating-linear-gradient(135deg, rgba(120,80,95,0.035) 0px, rgba(120,80,95,0.035) 1px, rgba(0,0,0,0.0) 7px, rgba(0,0,0,0.0) 14px);
+      opacity:0.55;
+      pointer-events:none;
+      mix-blend-mode:multiply;
+    }
+
+    /* A faint "stamp" heart */
+    #introScreen .card::after{
+      content:"";
+      position:absolute;
+      right:-18px;
+      top:-10px;
+      width:160px;
+      height:160px;
+      background:
+        radial-gradient(circle at 45% 40%, rgba(214,90,134,0.20), rgba(214,90,134,0.0) 60%),
+        radial-gradient(circle at 60% 60%, rgba(214,90,134,0.14), rgba(214,90,134,0.0) 62%);
+      transform: rotate(10deg);
+      pointer-events:none;
+      opacity:0.9;
+    }
+
+    #introScreen .title{
+      font: 600 clamp(28px, 7.2vw, 52px)/1.05 "Dancing Script", "Great Vibes", "Brush Script MT", cursive;
+      color: rgba(55,18,35,0.92);
+      letter-spacing: 0.2px;
+      text-shadow:
+        0 10px 28px rgba(40,12,24,0.12);
+      padding: 2px 6px;
+    }
+
+    #introScreen .divider{
+      margin: 14px auto 12px;
+      width: min(320px, 70%);
+      height: 10px;
+      position:relative;
+      opacity:0.85;
+    }
+    #introScreen .divider::before{
+      content:"";
+      position:absolute;
+      left:0; right:0; top:50%;
+      height:1px;
+      background: linear-gradient(90deg, rgba(150,95,120,0.0), rgba(150,95,120,0.38), rgba(150,95,120,0.0));
+      transform: translateY(-50%);
+    }
+    #introScreen .divider::after{
+      content:"❤";
+      position:absolute;
+      left:50%; top:50%;
+      transform: translate(-50%, -55%);
+      font: 600 16px/1 "Dancing Script", cursive;
+      color: rgba(214,90,134,0.52);
+      text-shadow: 0 8px 18px rgba(40,10,25,0.10);
+      background: rgba(255,250,252,0.75);
+      padding: 2px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(150,95,120,0.18);
+    }
+
+    #introScreen .hint{
+      margin-top: 8px;
+      font: 500 clamp(13px, 3.0vw, 17px)/1.35 "Cormorant Garamond", Georgia, serif;
+      color: rgba(65,22,40,0.80);
+    }
+    #introScreen .hint span{
+      display:inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(214,90,134,0.10);
+      border: 1px solid rgba(150,95,120,0.18);
+      box-shadow: 0 14px 24px rgba(35,10,25,0.10);
+    }
+
+    #introScreen:focus-visible .card{
+      box-shadow: 0 26px 80px rgba(35,10,25,0.26);
+      outline: 3px solid rgba(214,90,134,0.18);
+      outline-offset: 4px;
+    }
+
   </style>
 </head>
 <body>
   <canvas id="c" role="img" aria-label="Animación de un ramo de gerberas azul turquesa bajo un cielo estrellado con nubes, luna y la constelación de Capricornio"></canvas>
+
+  <div id="introScreen" role="button" tabindex="0" aria-label="Iniciar la animación">
+    <div class="card">
+      <div class="title">recuerda que son con mucho cariño para ti</div>
+      <div class="divider" aria-hidden="true"></div>
+      <div class="hint"><span>toca aqui &lt;3</span></div>
+    </div>
+  </div>
+
   <script>
 (() => {
   'use strict';
+
+  let STARTED = false;
 
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d', { alpha:false });
@@ -117,7 +302,7 @@
 
 // ===== Intro: generación del ramo al abrir =====
 // master: 0..1 controla el “construir” tallo -> hojas -> pétalos.
-const INTRO = { active: true, t0: performance.now(), dur: 5200 };
+const INTRO = { active: false, t0: performance.now(), dur: 5200 };
 
 const smoothstep = (a,b,x) => {
   const t = clamp((x - a) / Math.max(1e-6, (b - a)), 0, 1);
@@ -4445,6 +4630,7 @@ for(const f of bloomOrder){
   window.addEventListener('resize', requestResize, {passive:true});
 
   canvas.addEventListener('pointerdown', (e) => {
+    if(!STARTED) return;
     const r = canvas.getBoundingClientRect();
     const x = (e.clientX - r.left);
     const y = (e.clientY - r.top);
@@ -4552,10 +4738,42 @@ function stop(){
 
 document.addEventListener('visibilitychange', () => {
   if(document.hidden) stop();
-  else start();
+  else { if(STARTED) start(); }
 }, {passive:true});
 
-start();
+
+  const intro = document.getElementById('introScreen');
+  function begin(){
+    if(STARTED) return;
+    STARTED = true;
+
+    // arrancar animación de “generación” al entrar
+    INTRO.active = true;
+    INTRO.t0 = performance.now();
+
+    
+// transición suave: primero desvanecemos la carta, luego revelamos el canvas
+if(intro) intro.classList.add('hide');
+
+// preparar tamaños/caches
+try{ resize(); }catch(_){ /* en caso extremo, intentamos arrancar igual */ }
+
+// empezar a revelar la escena (crossfade) y arrancar
+window.setTimeout(()=>{ document.body.classList.add('scene-ready'); }, 120);
+window.setTimeout(()=>{ start(); }, 260);
+}
+
+  // Click/tap/tecla
+  if(intro){
+    intro.addEventListener('pointerdown', (e)=>{ e.preventDefault(); begin(); }, {passive:false});
+    intro.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); begin(); }
+    }, {passive:false});
+  } else {
+    // si por alguna razón no está el overlay, arranca normal
+    begin();
+  }
+
 })();
 </script>
 </body>
