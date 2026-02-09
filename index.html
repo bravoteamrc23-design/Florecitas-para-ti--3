@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Ramo de gerberas (noche)</title>
+  <title>Ramo de orquídeas (noche)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet" />
@@ -228,6 +228,14 @@
       text-shadow: 0 1px 0 rgba(255,255,255,0.35);
     }
 
+    #introTitle .heart{
+      display:inline-block;
+      margin-left: .06em;
+      color: rgba(170, 20, 60, 0.92);
+      text-shadow: 0 1px 0 rgba(255,255,255,0.35), 0 10px 24px rgba(170,20,60,0.18);
+      transform: translateY(-.02em);
+    }
+
     #introMsg{
       font-family: "Dancing Script", cursive;
       font-weight: 600;
@@ -323,9 +331,9 @@
       width:100%;
       height:100%;
       pointer-events:none;
-      opacity:.18;
-      filter: blur(.25px);
-      color: rgba(70,40,30,.55);
+      opacity: .24;
+      filter: blur(.18px);
+      color: rgba(70,40,30,.62);
       mix-blend-mode: multiply;
     }
     .paperDoodle .thin{ stroke-width:2.2; opacity:.85; }
@@ -336,7 +344,7 @@
   </style>
 </head>
 <body>
-  <canvas id="c" role="img" aria-label="Animación de un ramo de gerberas azules y amarillas bajo un cielo estrellado con nubes, luna y la constelación de Capricornio"></canvas>
+  <canvas id="c" role="img" aria-label="Animación de un ramo de orquídeas rosadas bajo un cielo estrellado con nubes, luna y la constelación de Capricornio"></canvas>
 
   <div id="introScreen" role="dialog" aria-label="Mensaje de inicio">
     <div id="loveWrap">
@@ -346,208 +354,93 @@
         <div class="paper">
           
           <svg class="paperDoodle" viewBox="0 0 600 800" aria-hidden="true" focusable="false">
-            <defs>
-              <filter id="pencil">
-                <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" result="n"/>
-                <feDisplacementMap in="SourceGraphic" in2="n" scale="1.15" xChannelSelector="R" yChannelSelector="G"/>
-              </filter>
+  <defs>
+    <filter id="pencil">
+      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="2" stitchTiles="stitch" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.05" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
 
-              <!-- hachurado suave -->
-              <pattern id="hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
-                <path d="M0 0 L0 12" stroke="currentColor" stroke-width="1.2" opacity=".25"/>
-              </pattern>
+    <pattern id="hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
+      <path d="M0 0 L0 12" stroke="currentColor" stroke-width="1.1" opacity=".22"/>
+    </pattern>
 
-              <!-- puntitos tipo tinta -->
-              <pattern id="speckle" width="26" height="26" patternUnits="userSpaceOnUse">
-                <circle cx="4" cy="7" r="1.1" fill="currentColor" opacity=".09"/>
-                <circle cx="18" cy="12" r="0.9" fill="currentColor" opacity=".07"/>
-                <circle cx="10" cy="22" r="1.0" fill="currentColor" opacity=".06"/>
-                <circle cx="22" cy="24" r="0.8" fill="currentColor" opacity=".05"/>
-              </pattern>
-            </defs>
+    <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="currentColor" stop-opacity=".00"/>
+      <stop offset="0.55" stop-color="currentColor" stop-opacity=".08"/>
+      <stop offset="1" stop-color="currentColor" stop-opacity=".00"/>
+    </linearGradient>
+  </defs>
 
-            <!-- textura muy tenue -->
-            <g filter="url(#pencil)" opacity=".55">
-              <rect x="0" y="0" width="600" height="800" fill="url(#speckle)"/>
-            </g>
+  <g filter="url(#pencil)">
+    <!-- marco súper sutil -->
+    <rect x="28" y="28" width="544" height="744" rx="22" fill="none" stroke="currentColor" opacity=".22" class="thin"/>
+    <rect x="44" y="44" width="512" height="712" rx="18" fill="none" stroke="currentColor" opacity=".16" class="thin"/>
 
-            <!-- pliegues del papel -->
-            <g fill="none" stroke="currentColor" class="thin fade" filter="url(#pencil)">
-              <path d="M72 175 C165 150, 268 158, 350 148 C445 136, 520 150, 560 170" />
-              <path d="M55 520 C170 540, 285 520, 370 538 C462 556, 525 548, 570 528" />
-              <path d="M300 105 C294 205, 306 320, 295 445 C285 565, 310 678, 300 765" opacity=".45"/>
-            </g>
+    <!-- luna -->
+    <g opacity=".25">
+      <circle cx="468" cy="146" r="40" fill="none" stroke="currentColor" class="med"/>
+      <path d="M490 122c-18 10-26 32-18 51c-16-10-24-28-19-46c4-14 19-27 37-29z" fill="url(#hatch)" opacity=".55"/>
+    </g>
 
-            <!-- marco superior con encaje -->
-            <g fill="none" stroke="currentColor" class="thin fade" filter="url(#pencil)">
-              <path d="M70 95
-                       Q 90 72 110 95
-                       Q 130 118 150 95
-                       Q 170 72 190 95
-                       Q 210 118 230 95
-                       Q 250 72 270 95
-                       Q 290 118 310 95
-                       Q 330 72 350 95
-                       Q 370 118 390 95
-                       Q 410 72 430 95
-                       Q 450 118 470 95
-                       Q 490 72 510 95
-                       Q 530 118 550 95" />
-              <path d="M70 720
-                       Q 90 698 110 720
-                       Q 130 742 150 720
-                       Q 170 698 190 720
-                       Q 210 742 230 720
-                       Q 250 698 270 720
-                       Q 290 742 310 720
-                       Q 330 698 350 720
-                       Q 370 742 390 720
-                       Q 410 698 430 720
-                       Q 450 742 470 720
-                       Q 490 698 510 720
-                       Q 530 742 550 720" />
-              <!-- puntitos tipo bordado -->
-              <path d="M88 114 L88 114 M128 114 L128 114 M168 114 L168 114 M208 114 L208 114 M248 114 L248 114
-                       M288 114 L288 114 M328 114 L328 114 M368 114 L368 114 M408 114 L408 114 M448 114 L448 114
-                       M488 114 L488 114 M528 114 L528 114"
-                    stroke-linecap="round" stroke-width="4.2" opacity=".35"/>
-              <path d="M88 701 L88 701 M128 701 L128 701 M168 701 L168 701 M208 701 L208 701 M248 701 L248 701
-                       M288 701 L288 701 M328 701 L328 701 M368 701 L368 701 M408 701 L408 701 M448 701 L448 701
-                       M488 701 L488 701 M528 701 L528 701"
-                    stroke-linecap="round" stroke-width="4.2" opacity=".30"/>
-            </g>
+    <!-- aves -->
+    <g opacity=".20" class="thin" fill="none" stroke="currentColor" stroke-linecap="round">
+      <path d="M170 164c10-8 22-8 33 0" />
+      <path d="M215 170c8-7 18-7 26 0" />
+      <path d="M138 190c8-6 18-6 26 0" />
+    </g>
 
-            <!-- marco lateral con enredadera y hojas -->
-            <g fill="none" stroke="currentColor" filter="url(#pencil)">
-              <path class="med fade" d="M88 130 C70 190, 72 250, 95 305 C120 365, 108 420, 86 472
-                                   C62 530, 70 600, 96 655 C116 698, 122 724, 106 760" />
-              <path class="med fade" d="M512 130 C530 190, 528 250, 505 305 C480 365, 492 420, 514 472
-                                   C538 530, 530 600, 504 655 C484 698, 478 724, 494 760" />
-              <!-- hojas izquierda -->
-              <g class="thin fade">
-                <path d="M92 205 C70 202, 58 190, 56 174 C72 184, 86 194, 96 212" />
-                <path d="M100 245 C78 248, 62 240, 54 226 C72 232, 88 234, 104 250" />
-                <path d="M92 350 C70 352, 58 342, 56 326 C72 336, 86 346, 96 360" />
-                <path d="M100 395 C78 398, 62 390, 54 378 C72 384, 88 386, 104 400" />
-                <path d="M92 585 C70 586, 58 576, 56 560 C74 572, 86 578, 96 592" />
-                <path d="M102 630 C80 632, 64 624, 56 612 C74 618, 90 620, 106 634" />
-              </g>
-              <!-- hojas derecha -->
-              <g class="thin fade">
-                <path d="M508 205 C530 202, 542 190, 544 174 C528 184, 514 194, 504 212" />
-                <path d="M500 245 C522 248, 538 240, 546 226 C528 232, 512 234, 496 250" />
-                <path d="M508 350 C530 352, 542 342, 544 326 C528 336, 514 346, 504 360" />
-                <path d="M500 395 C522 398, 538 390, 546 378 C528 384, 512 386, 496 400" />
-                <path d="M508 585 C530 586, 542 576, 544 560 C526 572, 514 578, 504 592" />
-                <path d="M498 630 C520 632, 536 624, 544 612 C526 618, 510 620, 494 634" />
-              </g>
-            </g>
+    <!-- montañas (línea) -->
+    <g opacity=".30" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
+      <path class="med" d="M40 520
+        C95 470 120 455 170 486
+        C210 510 240 470 285 448
+        C330 425 365 475 410 452
+        C460 425 500 450 560 508" />
+      <path class="thin" d="M58 540
+        C120 500 150 492 194 512
+        C235 532 272 505 310 488
+        C350 470 382 505 430 490
+        C476 476 516 498 548 522" opacity=".80"/>
+    </g>
 
-            <!-- sobre con sello, timbre y pequeña nota -->
-            <g filter="url(#pencil)" stroke="currentColor" fill="none">
-              <!-- sobre -->
-              <path class="bold fade" d="M165 520 L435 520 L435 645 L165 645 Z" />
-              <path class="med fade" d="M165 520 L300 610 L435 520" />
-              <path class="med fade" d="M165 645 L300 565 L435 645" />
-              <!-- sello de cera -->
-              <g>
-                <circle cx="300" cy="610" r="36" class="bold" opacity=".30"/>
-                <circle cx="300" cy="610" r="30" class="med" opacity=".38"/>
-                <path class="med" opacity=".40" d="M300 626 C286 616, 272 604, 286 590
-                                                  C296 580, 310 586, 300 600
-                                                  C290 586, 304 580, 314 590
-                                                  C328 604, 314 616, 300 626 Z"/>
-                <!-- brillo -->
-                <path class="thin" opacity=".20" d="M285 595 C278 606, 280 616, 288 624" />
-              </g>
-              <!-- timbre postal -->
-              <g opacity=".35">
-                <rect x="388" y="532" width="42" height="52" rx="6" class="med"/>
-                <path class="thin" d="M392 540 L426 540 M392 550 L426 550 M392 560 L426 560" />
-                <path class="thin" d="M396 576 C405 568, 413 568, 422 576" />
-              </g>
-              <!-- nota mini -->
-              <path class="thin fade" d="M188 545 C206 538, 230 538, 248 545" />
-              <path class="thin fade" d="M182 565 C210 555, 240 557, 268 565" />
-            </g>
+    <!-- relleno hachurado tenue -->
+    <path d="M40 520
+        C95 470 120 455 170 486
+        C210 510 240 470 285 448
+        C330 425 365 475 410 452
+        C460 425 500 450 560 508
+        L560 610 L40 610 Z" fill="url(#hatch)" opacity=".16"/>
 
-            <!-- gran corazón con listón y hachurado -->
-            <g filter="url(#pencil)" stroke="currentColor" fill="none">
-              <path class="bold" opacity=".30"
-                d="M300 210
-                   C265 170, 205 178, 205 238
-                   C205 298, 268 338, 300 372
-                   C332 338, 395 298, 395 238
-                   C395 178, 335 170, 300 210 Z"/>
-              <!-- listón -->
-              <path class="med fade" d="M220 292 C250 270, 280 264, 300 268 C320 264, 350 270, 380 292" />
-              <path class="med fade" d="M260 280 C252 300, 250 318, 262 332 C276 348, 298 342, 300 326
-                                       C302 342, 324 348, 338 332 C350 318, 348 300, 340 280" />
-              <path class="thin fade" d="M265 304 C275 294, 288 292, 300 296 C312 292, 325 294, 335 304" />
+    <!-- lago/río -->
+    <g opacity=".18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path class="thin" d="M120 620
+        C150 598 180 590 216 598
+        C250 606 270 588 300 580
+        C332 572 350 584 378 592
+        C410 600 438 592 476 572" />
+      <path class="thin" d="M126 638
+        C162 616 190 610 222 618
+        C255 626 274 612 304 604
+        C338 596 360 606 386 614
+        C420 622 446 614 468 600" opacity=".85"/>
+    </g>
 
-              <!-- hachurado dentro del corazón -->
-              <clipPath id="heartClip">
-                <path d="M300 210
-                         C265 170, 205 178, 205 238
-                         C205 298, 268 338, 300 372
-                         C332 338, 395 298, 395 238
-                         C395 178, 335 170, 300 210 Z"/>
-              </clipPath>
-              <g clip-path="url(#heartClip)" opacity=".22">
-                <rect x="190" y="160" width="220" height="250" fill="url(#hatch)"/>
-                <!-- sombras extra -->
-                <path class="thin" d="M220 240 C245 250, 270 260, 290 284" />
-                <path class="thin" d="M380 240 C355 250, 330 260, 310 284" />
-              </g>
-            </g>
+    <!-- árboles mínimos -->
+    <g opacity=".22" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path class="thin" d="M88 588 l0 34" />
+      <path class="thin" d="M88 588 c-12 6-16 18-18 26 c10-5 20-6 28 0 c8-6 18-5 28 0 c-3-10-8-22-20-26" />
+      <path class="thin" d="M520 575 l0 42" />
+      <path class="thin" d="M520 575 c-14 7-18 22-20 32 c12-6 22-7 32 0 c10-7 20-6 32 0 c-4-12-9-27-24-32" />
+    </g>
 
-            <!-- caligrafía fantasma -->
-            <g filter="url(#pencil)" fill="none" stroke="currentColor" class="thin" opacity=".16">
-              <path d="M120 410 C170 388, 220 394, 270 402 C330 412, 390 402, 450 392" />
-              <path d="M120 432 C190 412, 250 420, 310 430 C375 442, 430 434, 470 420" />
-              <path d="M120 455 C180 442, 240 448, 300 458 C360 468, 420 462, 470 448" />
-              <path d="M120 478 C200 468, 260 475, 320 486 C380 498, 440 492, 480 476" />
-              <!-- “floreos” -->
-              <path d="M145 392 C132 408, 130 420, 146 436 C160 450, 178 446, 186 432" />
-              <path d="M455 392 C468 408, 470 420, 454 436 C440 450, 422 446, 414 432" />
-            </g>
-
-            <!-- mini constelación romántica -->
-            <g filter="url(#pencil)" stroke="currentColor" fill="none" opacity=".32">
-              <path class="thin fade" d="M160 150 L210 138 L252 160 L300 145 L350 160 L392 138 L440 150" />
-              <circle cx="160" cy="150" r="4.2" fill="currentColor" opacity=".25"/>
-              <circle cx="210" cy="138" r="3.6" fill="currentColor" opacity=".22"/>
-              <circle cx="252" cy="160" r="3.2" fill="currentColor" opacity=".20"/>
-              <circle cx="300" cy="145" r="4.4" fill="currentColor" opacity=".24"/>
-              <circle cx="350" cy="160" r="3.2" fill="currentColor" opacity=".20"/>
-              <circle cx="392" cy="138" r="3.6" fill="currentColor" opacity=".22"/>
-              <circle cx="440" cy="150" r="4.2" fill="currentColor" opacity=".25"/>
-            </g>
-
-            <!-- rosas en esquinas (más detalladas) -->
-            <g filter="url(#pencil)" stroke="currentColor" fill="none" opacity=".42">
-              <!-- esquina superior izquierda -->
-              <path class="med" d="M132 170 C122 156, 126 138, 146 134 C164 130, 176 146, 170 162
-                                   C164 178, 144 182, 132 170 Z"/>
-              <path class="thin fade" d="M146 138 C152 144, 154 152, 148 160" />
-              <path class="thin fade" d="M140 150 C148 150, 156 156, 156 164" />
-              <path class="thin fade" d="M120 184 C136 178, 150 176, 166 184" />
-              <path class="thin fade" d="M120 184 C128 196, 142 206, 156 210" />
-
-              <!-- esquina inferior derecha -->
-              <path class="med" d="M468 650 C478 664, 474 682, 454 686 C436 690, 424 674, 430 658
-                                   C436 642, 456 638, 468 650 Z"/>
-              <path class="thin fade" d="M454 682 C448 676, 446 668, 452 660" />
-              <path class="thin fade" d="M460 670 C452 670, 444 664, 444 656" />
-              <path class="thin fade" d="M480 636 C464 642, 450 644, 434 636" />
-              <path class="thin fade" d="M480 636 C472 624, 458 614, 444 610" />
-            </g>
-
-          </svg>
+    <!-- bruma horizontal -->
+    <rect x="56" y="470" width="488" height="190" rx="24" fill="url(#mist)" opacity=".55"/>
+  </g>
+</svg>
 <div id="paperContent">
             <div>
-              <div id="introTitle">Para ti &lt;3</div>
-              <div id="introMsg">recuerda con mucho cariño para ti</div>
+              <div id="introMsg">recuerda que son con mucho cariño</div>
+              <div id="introTitle">para ti <span class="heart" aria-hidden="true">❤</span></div>
             </div>
 
             <button id="introBtn" type="button">toca aquí</button>
@@ -657,20 +550,20 @@
     };
   }
 
-  // Color aleatorio pero estable por semilla (así cada gerbera "nace" con su propio tono)
+  // Color aleatorio pero estable por semilla (así cada orquídea "nace" con su propio tono)
   const colorFromSeed = (seed)=>{
-    // Azul marino MUY claro (navy). Variación mínima por flor para que se vea natural,
-    // pero sin salirse del rango "azul marino" (nada de morados/rosas accidentales).
+    // Rosado estable por semilla: variación sutil por flor para que se vea natural,
+    // sin salirse del rango "rosado/orquídea" (evita azules o rojos chillones).
     let s = (seed >>> 0) || 1;
     const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
 
-    const base = { r: 10, g: 28, b: 70 };       // #0A1C46
-    const v    = 10 + Math.floor(rnd()*10);     // 10..19 (ligero brillo)
-    const tilt = (rnd()*2 - 1) * 2;             // -2..2 (micro variación)
+    const base = { r: 232, g: 86,  b: 170 };     // #E856AA (rosado)
+    const v    = -10 + Math.floor(rnd()*21);     // -10..10 (luz)
+    const t    = -6  + Math.floor(rnd()*13);     // -6..6 (micro tono)
     return {
-      r: clamp(base.r + v + tilt, 0, 255),
-      g: clamp(base.g + v + tilt, 0, 255),
-      b: clamp(base.b + v,        0, 255)
+      r: clamp(base.r + v,        0, 255),
+      g: clamp(base.g + v + t,    0, 255),
+      b: clamp(base.b + v + t*2,  0, 255)
     };
   };
 
@@ -772,7 +665,7 @@ function restartIntro(){
 }
 
 
-  // Campo de viento global (compartido por pasto y gerberas)
+  // Campo de viento global (compartido por pasto y orquídeas)
   const windField = (t) => {
     if(CONFIG.reduceMotion && !CONFIG.forceFlowerMotion) return 0;
     // combinación lenta (natural y suave)
@@ -806,7 +699,7 @@ function restartIntro(){
     crownStrength: 0.008,
 
     // Texto “en estrellas”
-    starText: 'hoy no te vi, pero seguro te veías muy bonita <3',
+    starText: 'no hay día que no pases por mi mente <3',
     starTextStrength: 0.95    ,
 
     // Rendimiento / calidad
@@ -2055,7 +1948,7 @@ function drawSun(t){
       g.fill();
       g.restore();
 
-      // Haze per-layer (profundidad): cuanto más lejos, más neblina azul
+      // Haze per-layer (profundidad): cuanto más lejos, más neblina fría
       g.save();
       g.globalCompositeOperation = 'screen';
       g.globalAlpha = 0.08 * (1 - k/(mountains.length-1));
@@ -3855,13 +3748,523 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     c2.setTransform(ss,0,0,ss,0,0);
     c2.translate(ax, ay);
 
-    renderTulipBloomSprite(c2, w, h, col, seed, oQ/20, pv);
+    renderOrchidBloomSprite(c2, w, h, col, seed, oQ/20, pv);
 
     const obj = { canvas: off, ox: ax, oy: ay, ss };
     bloomCache.set(key, obj);
     return obj;
   }
-  function renderTulipBloomSprite(c2, w, h, col, seed, open, petalsVisible){
+  
+  function renderOrchidBloomSprite(c2, w, h, col, seed, open, petalsVisible){
+    // Orquídea más realista (sin volverse una foto ni matar rendimiento):
+    // - Formas más redondeadas (menos “punta”), borde ligeramente ondulado
+    // - Sub-surface/“translucencia” en bordes, AO suave en el centro
+    // - Venas más orgánicas + moteado controlado (no confeti)
+    // - Labelo con lóbulos y garganta más profunda
+    // - Columna con volumen
+
+    let s = (seed >>> 0) || 1;
+    const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
+
+    const pv = clamp((petalsVisible==null?6:petalsVisible), 0, 6); // float
+    const appear = pv / 6; // 0..1
+    const op = clamp(open==null?1:open, 0, 1);
+
+    const mix = (a,b,t)=>({
+      r: Math.round(lerp(a.r,b.r,t)),
+      g: Math.round(lerp(a.g,b.g,t)),
+      b: Math.round(lerp(a.b,b.b,t))
+    });
+
+    const lite = mix(col, {r:255,g:255,b:255}, 0.62);
+    const mid  = mix(col, {r:220,g:238,b:255}, 0.28);
+    const deep = mix(col, {r:  2,g:  8,b: 24}, 0.70);
+    const edge = mix(lite, {r:255,g:255,b:255}, 0.55);
+
+    // garganta/centro: blanco-rosado (mantiene el rosado sin meter amarillos raros)
+    const throat = mix(col, {r:255,g:235,b:245}, 0.74);
+    const throatDeep = mix(col, {r: 56,g: 10,b: 38}, 0.62);
+
+    // labelo algo más luminoso
+    const lipCol  = mix(col, {r:255,g:235,b:245}, 0.46);
+    const lipDeep = mix(col, {r: 64,g: 12,b: 42}, 0.62);
+
+    const centerY = -h*0.58;
+
+    // halo sutil (bloom)
+    c2.save();
+    c2.globalCompositeOperation = 'lighter';
+    c2.globalAlpha = 0.10;
+    const haloR = Math.max(w*1.65, h*1.22);
+    const halo = c2.createRadialGradient(0, centerY, 6, 0, centerY, haloR);
+    halo.addColorStop(0, rgba(col.r,col.g,col.b,0.22));
+    halo.addColorStop(0.55, rgba(col.r,col.g,col.b,0.06));
+    halo.addColorStop(1, rgba(col.r,col.g,col.b,0));
+    c2.fillStyle = halo;
+    c2.beginPath();
+    c2.ellipse(0, centerY, w*1.26, h*1.10, 0, 0, TAU);
+    c2.fill();
+    c2.restore();
+
+    // sombra de anclaje
+    c2.save();
+    c2.globalAlpha = 0.15;
+    c2.fillStyle = rgba(0,0,0,0.18);
+    c2.beginPath();
+    c2.ellipse(0, h*0.03, w*0.34, h*0.12, 0, 0, TAU);
+    c2.fill();
+    c2.restore();
+
+    const stage = (i)=>{
+      // 6 partes: 0 dorsal, 1 sepal izq, 2 sepal der, 3 petal izq, 4 petal der, 5 labelo+columna
+      const x = clamp(appear*6 - i, 0, 1);
+      return x*x*(3-2*x);
+    };
+
+    const drawPetal = (ang, len, wid, alpha, tint, curl, isBack, kind)=>{
+      if(alpha <= 0) return;
+
+      c2.save();
+      c2.translate(0, centerY);
+      c2.rotate(ang);
+
+      // Apertura: open = más extendida
+      const spread = lerp(0.80, 1.08, op);
+      c2.scale(spread, 1);
+
+      // Curvatura ligera
+      c2.transform(1, 0, curl, 1, 0, 0);
+
+      // “Tipo” de pieza: dorsal / sepal / petal (variación de redondeo)
+      const tipRound = (kind==='petal') ? 0.38 : (kind==='dorsal' ? 0.30 : 0.33);
+      const ruffleAmp = (isBack ? 0.045 : 0.070) * (kind==='petal' ? 1.0 : 0.85);
+
+      // Precalcula forma (determinista dentro de esta pieza)
+      const tipY = -len;
+      const shoulder = wid*(0.95 + 0.08*rnd());
+      const upper = wid*(0.62 + 0.08*rnd());
+      const tipW = wid*(tipRound + 0.05*rnd());
+      const ruf = wid*ruffleAmp;
+      const wob1 = (rnd()*2-1) * ruf;
+      const wob2 = (rnd()*2-1) * ruf;
+      const tipCtrl = tipY - len*(0.04 + 0.02*rnd());
+
+      const path = ()=>{
+        c2.beginPath();
+        c2.moveTo(0, 0);
+        c2.bezierCurveTo(
+          shoulder + wob1, -len*(0.16 + 0.02*rndLocal(0)),
+          upper    + wob2, -len*(0.66 + 0.03*rndLocal(1)),
+          tipW, tipY
+        );
+        c2.quadraticCurveTo(0, tipCtrl, -tipW, tipY);
+        c2.bezierCurveTo(
+          -upper    - wob2, -len*(0.66 + 0.03*rndLocal(2)),
+          -shoulder - wob1, -len*(0.16 + 0.02*rndLocal(3)),
+          0, 0
+        );
+        c2.closePath();
+      };
+
+      // Micro-variación sin consumir rnd (para que path() sea idéntico en shadow/fill/clip)
+      // Usamos una mini función determinista basada en seed local.
+      const rl = (Math.floor((wob1*9973 + wob2*7919 + len*37 + wid*13)*1000) >>> 0) || 1;
+      const rndLocal = (k)=>{
+        // k: 0..3
+        let x = (rl + k*1013) >>> 0;
+        x = (x * 1664525 + 1013904223) >>> 0;
+        return (x / 4294967296);
+      };
+
+      // sombra trasera suave (da separación de capas)
+      c2.save();
+      c2.globalAlpha = alpha * (isBack ? 0.16 : 0.12);
+      c2.fillStyle = rgba(0,0,0,0.22);
+      c2.translate(0.8, 1.2);
+      path();
+      c2.fill();
+      c2.restore();
+
+      // gradiente principal (vertical)
+      const base = mix(deep, col, 0.22 + 0.22*tint);
+      const body = mix(col,  mid, 0.16 + 0.22*tint);
+      const tip  = mix(lite, {r:255,g:255,b:255}, 0.12 + 0.10*tint);
+
+      const g = c2.createLinearGradient(0, 0, 0, tipY);
+      g.addColorStop(0,   rgba(base.r,base.g,base.b, 0.58));
+      g.addColorStop(0.28,rgba(col.r,col.g,col.b,    0.98));
+      g.addColorStop(0.72,rgba(body.r,body.g,body.b,  0.98));
+      g.addColorStop(1,   rgba(tip.r,tip.g,tip.b,     0.98));
+
+      c2.globalAlpha = alpha;
+      c2.fillStyle = g;
+      path();
+      c2.fill();
+
+      // AO suave hacia el centro (profundidad)
+      c2.save();
+      c2.globalCompositeOperation = 'multiply';
+      c2.globalAlpha = alpha * 0.10;
+      const ao = c2.createRadialGradient(0, -len*0.10, 0, 0, -len*0.10, Math.max(wid*0.95, len*0.55));
+      ao.addColorStop(0, 'rgba(0,0,0,0.26)');
+      ao.addColorStop(0.55, 'rgba(0,0,0,0.10)');
+      ao.addColorStop(1, 'rgba(0,0,0,0)');
+      c2.fillStyle = ao;
+      path();
+      c2.fill();
+      c2.restore();
+
+      // translucencia de bordes (subsurface) + brillo suave
+      c2.save();
+      c2.globalCompositeOperation = 'screen';
+      c2.globalAlpha = alpha * (isBack ? 0.06 : 0.10);
+      path();
+      c2.clip();
+
+      const e1 = c2.createRadialGradient(wid*0.62, tipY*0.52, 0, wid*0.62, tipY*0.52, len*0.86);
+      e1.addColorStop(0, 'rgba(255,255,255,0.18)');
+      e1.addColorStop(0.55,'rgba(255,255,255,0.07)');
+      e1.addColorStop(1, 'rgba(255,255,255,0)');
+      c2.fillStyle = e1;
+      c2.fillRect(-wid*1.4, tipY-len*0.25, wid*2.8, len*1.6);
+
+      const e2 = c2.createRadialGradient(-wid*0.62, tipY*0.52, 0, -wid*0.62, tipY*0.52, len*0.86);
+      e2.addColorStop(0, 'rgba(255,255,255,0.16)');
+      e2.addColorStop(0.55,'rgba(255,255,255,0.06)');
+      e2.addColorStop(1, 'rgba(255,255,255,0)');
+      c2.fillStyle = e2;
+      c2.fillRect(-wid*1.4, tipY-len*0.25, wid*2.8, len*1.6);
+
+      // centro ligeramente más claro
+      c2.globalAlpha = alpha * (isBack ? 0.035 : 0.060);
+      const cg = c2.createRadialGradient(0, tipY*0.35, 0, 0, tipY*0.35, len*0.92);
+      cg.addColorStop(0, rgba(throat.r, throat.g, throat.b, 0.26));
+      cg.addColorStop(0.45, rgba(255,255,255,0.10));
+      cg.addColorStop(1, rgba(255,255,255,0));
+      c2.fillStyle = cg;
+      c2.beginPath();
+      c2.ellipse(0, tipY*0.40, wid*0.82, len*0.62, 0, 0, TAU);
+      c2.fill();
+
+      c2.restore();
+
+      // borde iluminado (más fino y “natural”)
+      c2.save();
+      c2.globalAlpha = alpha * 0.14;
+      c2.strokeStyle = rgba(edge.r,edge.g,edge.b, 0.92);
+      c2.lineWidth = Math.max(0.75, wid*0.085);
+      c2.lineJoin = 'round';
+      c2.lineCap  = 'round';
+      path();
+      c2.stroke();
+      c2.restore();
+
+      // venas: menos uniformes, más orgánicas
+      c2.save();
+      c2.lineJoin = 'round';
+      c2.lineCap  = 'round';
+
+      // venas claras
+      c2.globalAlpha = alpha * (isBack ? 0.055 : 0.090);
+      c2.strokeStyle = 'rgba(255,255,255,0.22)';
+      c2.lineWidth = Math.max(0.55, wid*0.040);
+      const veinCount = isBack ? 6 : 9;
+      for(let k=0;k<veinCount;k++){
+        const t = (k - (veinCount-1)/2) / ((veinCount-1)/2);
+        const o = t * wid*(0.14 + 0.05*rnd());
+        const bend = (0.24 + 0.18*Math.abs(t)) * (0.8 + 0.3*rnd());
+        c2.beginPath();
+        c2.moveTo(o*0.06, -len*0.06);
+        c2.quadraticCurveTo(o*0.65, -len*(0.36+bend*0.10), o*0.08, -len*(0.94 + 0.02*rnd()));
+        c2.stroke();
+      }
+
+      // nervio central un poco más marcado
+      c2.globalAlpha = alpha * (isBack ? 0.065 : 0.105);
+      c2.strokeStyle = 'rgba(255,255,255,0.30)';
+      c2.lineWidth = Math.max(0.65, wid*0.050);
+      c2.beginPath();
+      c2.moveTo(0, -len*0.04);
+      c2.quadraticCurveTo(wid*0.02, -len*(0.54 + 0.06*rnd()), 0, -len*(0.98));
+      c2.stroke();
+
+      // sombras de venas (micro profundidad)
+      c2.globalAlpha = alpha * (isBack ? 0.020 : 0.040);
+      c2.strokeStyle = 'rgba(0,0,0,0.22)';
+      c2.lineWidth = Math.max(0.55, wid*0.045);
+      for(let k=0;k<4;k++){
+        const o = (k-1.5) * wid*(0.16 + 0.02*rnd());
+        c2.beginPath();
+        c2.moveTo(o*0.10, -len*0.02);
+        c2.quadraticCurveTo(o*0.55, -len*(0.34 + 0.04*rnd()), o*0.04, -len*0.92);
+        c2.stroke();
+      }
+
+      c2.restore();
+
+      // moteado: controlado, concentrado hacia el centro (realista)
+      if(!isBack && alpha > 0.03){
+        c2.save();
+        path();
+        c2.clip();
+
+        const n = 22 + Math.floor(rnd()*10);
+        for(let i=0;i<n;i++){
+          const u = rnd();
+          const v = rnd();
+          // sesgo hacia centro y mitad superior
+          const px = (u*2-1) * wid*(0.22 + 0.42*Math.pow(1-v, 1.6));
+          const py = -v * len*(0.86 + 0.10*rnd());
+          const pr = wid*(0.010 + 0.020*rnd()) * (0.6 + 0.8*(1-v));
+          c2.globalAlpha = alpha * (0.020 + 0.030*(1-v));
+          c2.fillStyle = 'rgba(255,255,255,0.22)';
+          c2.beginPath();
+          c2.ellipse(px, py, pr*1.2, pr, (rnd()*2-1)*0.5, 0, TAU);
+          c2.fill();
+        }
+
+        // micro sombras para que no sea “purpurina”
+        const n2 = 10 + Math.floor(rnd()*6);
+        for(let i=0;i<n2;i++){
+          const u = rnd(), v = rnd();
+          const px = (u*2-1) * wid*0.40;
+          const py = -v * len*0.62;
+          const pr = wid*(0.010 + 0.016*rnd());
+          c2.globalAlpha = alpha * 0.018;
+          c2.fillStyle = 'rgba(0,0,0,0.22)';
+          c2.beginPath();
+          c2.arc(px, py, pr, 0, TAU);
+          c2.fill();
+        }
+
+        c2.restore();
+      }
+
+      c2.restore();
+    };
+
+    const drawLip = (alpha)=>{
+      if(alpha <= 0) return;
+
+      const len = h*(0.84 + 0.16*op);
+      const wid = w*(0.62 + 0.14*rnd());
+      const centerDrop = 1.08 + 0.04*Math.sin(rnd()*TAU);
+
+      const lipPath = ()=>{
+        // 3 lóbulos (central más largo)
+        c2.beginPath();
+        c2.moveTo(0, 0);
+        // lóbulo derecho
+        c2.bezierCurveTo( wid*0.72, len*0.10,  wid*0.92, len*0.50,  wid*0.18, len*0.92);
+        // lóbulo central (cae un poco más)
+        c2.quadraticCurveTo(0, len*centerDrop, -wid*0.18, len*0.92);
+        // lóbulo izquierdo
+        c2.bezierCurveTo(-wid*0.92, len*0.50, -wid*0.72, len*0.10, 0, 0);
+        c2.closePath();
+      };
+
+      c2.save();
+      c2.translate(0, centerY + h*0.13);
+      c2.rotate(0.05*(rnd()*2-1));
+
+      // sombra del labelo (profundidad)
+      c2.save();
+      c2.globalAlpha = alpha * 0.15;
+      c2.fillStyle = rgba(0,0,0,0.24);
+      c2.translate(0.8, 1.2);
+      lipPath();
+      c2.fill();
+      c2.restore();
+
+      // relleno (gradiente)
+      const g = c2.createLinearGradient(0, 0, 0, len);
+      g.addColorStop(0,   rgba(lipDeep.r,lipDeep.g,lipDeep.b, 0.70));
+      g.addColorStop(0.32,rgba(throatDeep.r,throatDeep.g,throatDeep.b, 0.92));
+      g.addColorStop(0.72,rgba(lipCol.r,lipCol.g,lipCol.b,  0.98));
+      g.addColorStop(1,   rgba(255,255,255,               0.94));
+
+      c2.globalAlpha = alpha;
+      c2.fillStyle = g;
+      lipPath();
+      c2.fill();
+
+      // garganta más definida (blanco rosado)
+      c2.save();
+      c2.globalCompositeOperation = 'screen';
+      c2.globalAlpha = alpha * 0.16;
+      const th = c2.createRadialGradient(0, len*0.18, 0, 0, len*0.22, Math.max(22, wid*0.50));
+      th.addColorStop(0, rgba(throat.r, throat.g, throat.b, 0.38));
+      th.addColorStop(0.55, 'rgba(255,255,255,0.10)');
+      th.addColorStop(1, 'rgba(255,255,255,0)');
+      c2.fillStyle = th;
+      c2.beginPath();
+      c2.ellipse(0, len*0.22, wid*0.24, len*0.22, 0, 0, TAU);
+      c2.fill();
+      c2.restore();
+
+      // ruffles/borde ondulado (más natural)
+      c2.save();
+      c2.globalAlpha = alpha * 0.24;
+      c2.strokeStyle = 'rgba(255,255,255,0.38)';
+      c2.lineWidth = Math.max(0.9, wid*0.055);
+      c2.lineJoin = 'round';
+      c2.lineCap  = 'round';
+      c2.beginPath();
+      const steps = 12;
+      for(let i=0;i<=steps;i++){
+        const tt = i/steps;
+        const xx = (tt*2-1) * wid*0.25;
+        const wob = Math.sin(tt*TAU*1.25 + 1.2) * wid*0.020;
+        const yy = len*(0.84 + 0.14*Math.sin(tt*TAU*1.02)) + wob;
+        if(i===0) c2.moveTo(xx, yy);
+        else c2.lineTo(xx, yy);
+      }
+      c2.stroke();
+      c2.restore();
+
+      // pliegues internos (ridges)
+      c2.save();
+      c2.globalAlpha = alpha * 0.10;
+      c2.strokeStyle = 'rgba(255,255,255,0.22)';
+      c2.lineWidth = Math.max(0.65, wid*0.028);
+      c2.lineCap = 'round';
+      for(let i=0;i<6;i++){
+        const tt = (i-2.5)/2.5;
+        const xx = tt * wid*0.10;
+        c2.beginPath();
+        c2.moveTo(xx, len*0.12);
+        c2.quadraticCurveTo(xx*0.60, len*0.44, xx*0.10, len*0.92);
+        c2.stroke();
+      }
+      c2.restore();
+
+      // moteado del labelo (muy leve)
+      c2.save();
+      lipPath();
+      c2.clip();
+      const dots = 16 + Math.floor(rnd()*10);
+      for(let i=0;i<dots;i++){
+        const u = rnd(), v = rnd();
+        const px = (u*2-1) * wid*(0.20 + 0.18*(1-v));
+        const py = len*(0.16 + v*0.70);
+        const pr = wid*(0.010 + 0.018*rnd());
+        c2.globalAlpha = alpha * (0.018 + 0.028*(1-v));
+        c2.fillStyle = 'rgba(255,255,255,0.22)';
+        c2.beginPath();
+        c2.arc(px, py, pr, 0, TAU);
+        c2.fill();
+      }
+      c2.restore();
+
+      c2.restore();
+    };
+
+    const drawColumn = (alpha)=>{
+      if(alpha <= 0) return;
+
+      c2.save();
+      c2.translate(0, centerY + h*0.02);
+      c2.rotate(0.06*(rnd()*2-1));
+
+      // cuerpo (cilindro) con gradiente
+      const cg = c2.createLinearGradient(-w*0.06, -h*0.10, w*0.06, h*0.08);
+      cg.addColorStop(0, 'rgba(255,255,255,0.06)');
+      cg.addColorStop(0.45,'rgba(255,255,255,0.16)');
+      cg.addColorStop(1, 'rgba(0,0,0,0.10)');
+
+      c2.globalAlpha = alpha * 0.72;
+      c2.fillStyle = cg;
+      c2.beginPath();
+      c2.ellipse(0, -h*0.05, w*0.09, h*0.13, 0, 0, TAU);
+      c2.fill();
+
+      // contorno
+      c2.globalAlpha = alpha * 0.22;
+      c2.strokeStyle = 'rgba(255,255,255,0.26)';
+      c2.lineWidth = Math.max(0.9, w*0.020);
+      c2.beginPath();
+      c2.ellipse(0, -h*0.05, w*0.09, h*0.13, 0, 0, TAU);
+      c2.stroke();
+
+      // “capucha” superior (antera)
+      c2.save();
+      c2.globalCompositeOperation = 'screen';
+      c2.globalAlpha = alpha * 0.14;
+      c2.fillStyle = rgba(throat.r, throat.g, throat.b, 0.22);
+      c2.beginPath();
+      c2.ellipse(0, -h*0.11, w*0.05, h*0.05, 0, 0, TAU);
+      c2.fill();
+      c2.restore();
+
+      // sombra proyectada mínima sobre el labelo
+      c2.save();
+      c2.globalCompositeOperation = 'multiply';
+      c2.globalAlpha = alpha * 0.08;
+      c2.fillStyle = 'rgba(0,0,0,0.22)';
+      c2.beginPath();
+      c2.ellipse(0, h*0.06, w*0.10, h*0.06, 0, 0, TAU);
+      c2.fill();
+      c2.restore();
+
+      c2.restore();
+    };
+
+    // ===== Orden de capas (back -> front) =====
+    // Sépalos (atrás)
+    const a0 = stage(0);
+    const a1 = stage(1);
+    const a2 = stage(2);
+    const sepalLen = h*(0.98 + 0.08*rnd());
+    const sepalWid = w*(0.50 + 0.08*rnd());
+
+    drawPetal( 0.00 + (rnd()*0.06-0.03), sepalLen*0.96, sepalWid*0.92, 0.70*a0, 0.05,  0.00, true, 'dorsal');
+    drawPetal( 0.98 + (rnd()*0.08-0.04), sepalLen*0.92, sepalWid*0.94, 0.62*a1, 0.03,  0.02, true, 'sepal');
+    drawPetal(-0.98 + (rnd()*0.08-0.04), sepalLen*0.92, sepalWid*0.94, 0.62*a2, 0.03, -0.02, true, 'sepal');
+
+    // Pétalos (frente)
+    const a3 = stage(3);
+    const a4 = stage(4);
+    const petLen = h*(0.96 + 0.12*rnd());
+    const petWid = w*(0.56 + 0.12*rnd());
+    drawPetal( 0.42 + (rnd()*0.08-0.04), petLen, petWid, 0.82*a3, 0.18,  0.03, false, 'petal');
+    drawPetal(-0.42 + (rnd()*0.08-0.04), petLen, petWid, 0.82*a4, 0.18, -0.03, false, 'petal');
+
+    // Labelo + columna
+    const a5 = stage(5);
+    drawLip(0.92*a5);
+    drawColumn(0.90*a5);
+
+    // Oclusión/centro (da “profundidad” de flor real)
+    c2.save();
+    c2.globalCompositeOperation = 'multiply';
+    c2.globalAlpha = 0.07 * appear;
+    const occ = c2.createRadialGradient(0, centerY + h*0.05, 0, 0, centerY + h*0.05, Math.max(18, w*0.62));
+    occ.addColorStop(0, 'rgba(0,0,0,0.24)');
+    occ.addColorStop(0.58,'rgba(0,0,0,0.10)');
+    occ.addColorStop(1, 'rgba(0,0,0,0)');
+    c2.fillStyle = occ;
+    c2.beginPath();
+    c2.ellipse(0, centerY + h*0.04, w*0.48, h*0.34, 0, 0, TAU);
+    c2.fill();
+    c2.restore();
+
+    // brillo final (muy suave) para “volumen” general
+    c2.save();
+    c2.globalCompositeOperation = 'screen';
+    c2.globalAlpha = 0.052 * appear;
+    const gh = c2.createRadialGradient(0, centerY - h*0.22, 0, 0, centerY - h*0.22, Math.max(18, w*0.86));
+    gh.addColorStop(0, 'rgba(255,255,255,0.16)');
+    gh.addColorStop(0.55,'rgba(255,255,255,0.06)');
+    gh.addColorStop(1, 'rgba(255,255,255,0)');
+    c2.fillStyle = gh;
+    c2.beginPath();
+    c2.ellipse(0, centerY - h*0.18, w*0.62, h*0.60, 0, 0, TAU);
+    c2.fill();
+    c2.restore();
+  }
+
+
+function renderTulipBloomSprite(c2, w, h, col, seed, open, petalsVisible){
     // Gerbera mejorada (v3):
     // - Capa “back” para profundidad (pétalos detrás)
     // - Pétalos con ligera curvatura (shear), estrías y highlight de punta
@@ -4665,7 +5068,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
 
 
 // ===== Bouquet =====
-  // Ramo más rico (8 gerberas): más profundidad, mejor composición y sin amontonarse.
+  // Ramo más rico (8 orquídeas): más profundidad, mejor composición y sin amontonarse.
   const DESCS = [
     {dx:-0.66, hf:1.05, bs:0.82}, // lateral izq (atrás)
     {dx:-0.44, hf:1.16, bs:0.92},
@@ -4723,9 +5126,21 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     });
   }
 function drawBouquet(t){
-    drawGrass(t);
+    // Suelo mínimo (sin césped): degradado oscuro suave para anclar el ramo
+    {
+      const gy = H * 0.74;
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      const g0 = ctx.createLinearGradient(0, gy - 70, 0, H);
+      g0.addColorStop(0, 'rgba(0,0,0,0)');
+      g0.addColorStop(0.35, 'rgba(0,0,0,0.16)');
+      g0.addColorStop(1, 'rgba(0,0,0,0.62)');
+      ctx.fillStyle = g0;
+      ctx.fillRect(0, gy - 70, W, H - (gy - 70));
+      ctx.restore();
+    }
 
-        // sombra suave del primer plano (cacheado)
+// sombra suave del primer plano (cacheado)
     rebuildBouquetShadeCache();
     if(bouquetShadeCache){
       ctx.drawImage(bouquetShadeCache, 0, 0, bouquetShadeCache.width / DPR, bouquetShadeCache.height / DPR);
@@ -4738,68 +5153,7 @@ function drawBouquet(t){
       ctx.fillRect(0,0,W,H);
     }
 
-// Campo de flores al fondo (detrás del arbusto y por encima del suelo)
-    rebuildFieldBandCache();
-    if(fieldBandCache){
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha *= 0.95; // visible pero sin “aplastar” la noche
-      ctx.drawImage(fieldBandCache, 0, 0, fieldBandCache.width / DPR, fieldBandCache.height / DPR);
-      ctx.restore();
-    }
-
-// Arbusto: overlay suave (sin cortes visibles)
-    rebuildBushCache();
-    if(bushCache){
-      const bushTop = H*0.78;
-
-      // “Blend” vertical para que el arbusto no meta una línea dura al cambiar de densidad
-      const blend = Math.min(140, H*0.10);
-      const y0 = bushTop - blend;
-      const y1 = bushTop + blend*0.35;
-
-      // Pasada A: velo superior (muy suave)
-      ctx.save();
-      ctx.globalAlpha *= 0.12;
-      ctx.beginPath();
-      ctx.rect(0, y0, W, blend*1.25);
-      ctx.clip();
-      ctx.drawImage(bushCache, 0, 0, bushCache.width / DPR, bushCache.height / DPR);
-      ctx.restore();
-
-      // Pasada B: cuerpo medio (entra antes del top para suavizar transición)
-      ctx.save();
-      ctx.globalAlpha *= 0.32;
-      ctx.beginPath();
-      ctx.rect(0, y0 + blend*0.25, W, H - (y0 + blend*0.25));
-      ctx.clip();
-      ctx.drawImage(bushCache, 0, 0, bushCache.width / DPR, bushCache.height / DPR);
-      ctx.restore();
-
-      // Pasada C: base más densa (empieza más abajo para que no haya “corte”)
-      ctx.save();
-      ctx.globalAlpha *= 0.55;
-      ctx.beginPath();
-      ctx.rect(0, y1, W, H - y1);
-      ctx.clip();
-      ctx.drawImage(bushCache, 0, 0, bushCache.width / DPR, bushCache.height / DPR);
-      ctx.restore();
-
-      // Bruma fina encima del borde: termina de esconder cualquier bandita residual
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      const fogTop = y0 - 18;
-      const fogBot = y1 + 26;
-      const fog = ctx.createLinearGradient(0, fogTop, 0, fogBot);
-      fog.addColorStop(0, 'rgba(120,170,255,0)');
-      fog.addColorStop(0.40, 'rgba(120,170,255,0.05)');
-      fog.addColorStop(0.75, 'rgba(90,140,220,0.03)');
-      fog.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = fog;
-      ctx.fillRect(0, fogTop, W, fogBot - fogTop);
-      ctx.restore();
-    }
-
+// (césped/campo eliminado por completo)
 
     // Brillo animado leve
     // Brillo animado leve (como “respiración” del follaje)
@@ -4811,8 +5165,8 @@ function drawBouquet(t){
       const rr = Math.min(W,H) * (0.62 + 0.10*pulse);
 
       const glow = ctx.createRadialGradient(cx, cy, 10, cx, cy, rr);
-      glow.addColorStop(0, `rgba(120,220,160,${0.06 + 0.04*pulse})`);
-      glow.addColorStop(0.55, `rgba(80,180,130,${0.035 + 0.03*pulse})`);
+      glow.addColorStop(0, `rgba(220,130,200,${0.06 + 0.04*pulse})`);
+      glow.addColorStop(0.55, `rgba(190,95,170,${0.035 + 0.03*pulse})`);
       glow.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
@@ -4867,19 +5221,7 @@ const STEM = {r:55,g:155,b:92};
         y: cubic(stemU, baseY, cp1y, cp2y, bloomYFull)
       };
 
-      const leafMid1 = baseY - f.height*(0.52*stemU);
-      const leafMid2 = baseY - f.height*(0.60*stemU);
-
-      if(leafU > 0.001){
-        ctx.save();
-        ctx.globalAlpha *= leafU;
-        const ls = f.scale * (0.18 + 0.82*leafU);
-        drawTulipLeaf(baseX, leafMid1, angle, ls*0.56, -1);
-        drawTulipLeaf(baseX, leafMid2, angle, ls*0.50,  1);
-        drawLeafSprig(baseX, baseY - f.height*(0.56*stemU), angle, ls*0.52, -1);
-        drawLeafSprig(baseX, baseY - f.height*(0.64*stemU), angle, ls*0.46,  1);
-        ctx.restore();
-      }
+      // (hojas/ramas eliminadas)
 
       ctx.save();
       ctx.lineCap = 'round';
@@ -5001,9 +5343,32 @@ ctx.restore();
     ctx.fillStyle = fog;
     ctx.fillRect(0, fogTop, W, H - fogTop);
     ctx.restore();
+    // Fade inferior: esconde la unión de tallos sin usar césped
+    {
+      const fade = introActive ? (0.55 + 0.45*master) : 1;
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      const top = H*0.86;
+      const g = ctx.createLinearGradient(0, top, 0, H);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(0.55, `rgba(0,0,0,${0.20*fade})`);
+      g.addColorStop(1,    `rgba(0,0,0,${0.62*fade})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, top, W, H - top);
+      ctx.restore();
 
-    // Pasto en primer plano: tapa uniones y hace que los tallos se sientan “dentro” del suelo.
-    drawOverlayGrass(t, introActive ? (0.55 + 0.45*master) : 1);
+      // Neblina azul muy sutil (da profundidad sin “pasto”)
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const fogTop2 = H*0.80;
+      const fog2 = ctx.createLinearGradient(0, fogTop2, 0, H);
+      fog2.addColorStop(0, 'rgba(120,150,220,0)');
+      fog2.addColorStop(0.55, `rgba(120,150,220,${0.035*fade})`);
+      fog2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = fog2;
+      ctx.fillRect(0, fogTop2, W, H - fogTop2);
+      ctx.restore();
+    }
 
     const bloomOrder = drawBouquet._bloom || (drawBouquet._bloom = []);
 
@@ -5028,7 +5393,7 @@ for(const f of bloomOrder){
       ctx.globalAlpha *= lerp(0.86, 1.0, depth);
       if(HAS_FILTER && blur > 0.02) ctx.filter = `blur(${blur.toFixed(2)}px)`;
 
-      // Movimiento suave extra sólo para la cabeza de la gerbera (independiente del tallo)
+      // Movimiento suave extra sólo para la cabeza de la orquídea (independiente del tallo)
       const tt = t * 0.001; // ms -> s
       const headWobble = (CONFIG.reduceMotion && !CONFIG.forceFlowerMotion) ? 0 : (
         (Math.sin(tt*2.2 + f.phase*3.7) * 0.16) +
@@ -5083,8 +5448,8 @@ for(const f of bloomOrder){
 
       // “Shimmer” ligero sobre el centro/pétalos para dar vida sin re-renderizar sprites cada frame
       if(!CONFIG.reduceMotion){
-        const cy = -f.bh*0.62;
-        const r0 = Math.min(f.bw, f.bh) * 0.19;
+        const cy = -f.bh*0.52;
+        const r0 = Math.min(f.bw, f.bh) * 0.16;
         ctx.save();
         ctx.globalCompositeOperation = 'screen';
         ctx.globalAlpha *= 0.075 * (0.35 + 0.65*(0.5 + 0.5*Math.sin(tt*4.1 + f.phase*1.3)));
@@ -5193,13 +5558,9 @@ for(const f of bloomOrder){
 
     rebuildFieldCache();
     seedBouquet();
-    seedSoil();
-    seedGrass();
-    seedOverlayGrass();
+    // Césped eliminado por completo
     seedFireflies();
-    rebuildGroundCache();
-
-    rebuildBouquetShadeCache();
+rebuildBouquetShadeCache();
 
     for(const f of bouquet){
       getBloomSprite(f.bw, f.bh, f.col, f.seed, f.open);
@@ -5233,10 +5594,6 @@ for(const f of bloomOrder){
     console.assert(stars.length < 40 || starLinks.length > 0, 'Constelaciones no generadas');
     console.assert(Array.isArray(tapSparkles), 'tapSparkles no existe');
     console.assert(Array.isArray(textStars) && textStars.length>200, 'Texto en estrellas no generado');
-    console.assert(Array.isArray(grass) && grass.length>0, 'Grass no inicializado');
-    console.assert(grassAnim1.length>0 && grassAnim2.length>0, 'Grass anim no inicializado');
-    console.assert(Array.isArray(soil) && soil.length>0, 'Soil no inicializado');
-    console.assert(!!groundCache && groundCache.width>0, 'Ground cache no generado');
     console.assert(!!skyCache && skyCache.width>0, 'Sky cache no generado');
     console.assert(Array.isArray(bouquet) && bouquet.length===DESCS.length, 'Bouquet no se generó correctamente');
     console.assert(CONFIG.crownStrength >= 0 && CONFIG.crownStrength <= 1, 'crownStrength fuera de rango');
