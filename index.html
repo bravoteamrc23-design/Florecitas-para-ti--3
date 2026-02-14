@@ -353,13 +353,14 @@
     /* Dibujo dentro de la hoja (boceto sutil) */
     .paperDoodle{
       position:absolute;
-      inset:0;
+      inset: clamp(16px, 4.6vmin, 44px);
+      border-radius: 18px;
       width:100%;
       height:100%;
       pointer-events:none;
       z-index: 0;
-      opacity: .46;
-      filter: blur(.06px) contrast(1.08);
+      opacity: .44;
+      filter: blur(.04px) contrast(1.10);
       color: rgba(55,30,22,.78);
       mix-blend-mode: multiply;
       /* que el dibujo viva abajo del texto */
@@ -399,7 +400,7 @@
 </style>
 </head>
 <body>
-  <canvas id="c" role="img" aria-label="Animación de un ramo de orquídeas rosadas bajo un cielo estrellado con nubes, luna y la constelación de Capricornio y Leo"></canvas>
+  <canvas id="c" role="img" aria-label="Animación de un ramo de orquídeas bajo un cielo estrellado con nubes, luna y la constelación de Capricornio y Leo"></canvas>
 
   <div id="introScreen" role="dialog" aria-label="Mensaje de inicio">
     <div id="loveWrap">
@@ -426,128 +427,97 @@
       <path d="M0 0 L0 12" stroke="currentColor" stroke-width="1.1" opacity=".22"/>
     </pattern>
 
-    <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="fadeBottom" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="currentColor" stop-opacity=".00"/>
-      <stop offset="0.55" stop-color="currentColor" stop-opacity=".08"/>
+      <stop offset="0.55" stop-color="currentColor" stop-opacity=".12"/>
       <stop offset="1" stop-color="currentColor" stop-opacity=".00"/>
     </linearGradient>
   </defs>
 
-  <g filter="url(#pencil)">
+  <g filter="url(#pencil)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <!-- línea de “mesa” / base -->
+    <path class="thin fade" d="M58 520 C170 498 250 508 308 532 C366 556 446 566 542 546"/>
 
-    <!-- luna -->
-    <g opacity=".25">
-      <circle cx="468" cy="146" r="40" fill="none" stroke="currentColor" class="med"/>
-      <path d="M490 122c-18 10-26 32-18 51c-16-10-24-28-19-46c4-14 19-27 37-29z" fill="url(#hatch)" opacity=".55"/>
+    <!-- hachurado suave para textura -->
+    <path d="M40 560 C160 540 250 552 300 576 C356 604 448 610 580 592
+             L580 770 L40 770 Z"
+          fill="url(#hatch)" stroke="none" opacity=".18"/>
+
+    <!-- Dos cisnes (cuellos formando corazón) -->
+    <g opacity=".86">
+      <path class="med" d="M255 650
+        C230 620 220 594 238 566
+        C256 538 296 548 312 584
+        C328 620 312 648 286 668
+        C268 682 252 678 242 668" />
+      <path class="med" d="M345 650
+        C370 620 380 594 362 566
+        C344 538 304 548 288 584
+        C272 620 288 648 314 668
+        C332 682 348 678 358 668" />
+      <!-- picos -->
+      <path class="thin" d="M242 668 C232 676 220 684 206 688" opacity=".7"/>
+      <path class="thin" d="M358 668 C368 676 380 684 394 688" opacity=".7"/>
     </g>
 
-    <!-- aves -->
-    <g opacity=".20" class="thin" fill="none" stroke="currentColor" stroke-linecap="round">
-      <path d="M170 164c10-8 22-8 33 0" />
-      <path d="M215 170c8-7 18-7 26 0" />
-      <path d="M138 190c8-6 18-6 26 0" />
+    <!-- Corazón central (muy tenue) -->
+    <path class="bold" d="M300 600
+      C275 545 212 560 226 612
+      C236 650 270 666 300 704
+      C330 666 364 650 374 612
+      C388 560 325 545 300 600"
+      opacity=".45"/>
+
+    <!-- Mini corazones flotando -->
+    <g opacity=".55">
+      <path class="thin" d="M430 565
+        C421 551 399 556 402 574
+        C404 590 422 598 430 612
+        C438 598 456 590 458 574
+        C461 556 439 551 430 565" />
+      <path class="thin" d="M180 560
+        C172 548 154 552 156 568
+        C158 584 174 590 180 602
+        C186 590 202 584 204 568
+        C206 552 188 548 180 560" opacity=".85"/>
+      <path class="thin" d="M310 520
+        C303 510 288 512 290 526
+        C292 540 306 545 310 555
+        C314 545 328 540 330 526
+        C332 512 317 510 310 520" opacity=".8"/>
     </g>
 
-    <!-- montañas (línea) -->
-    <g opacity=".30" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
-      <path class="med" d="M40 520
-        C95 470 120 455 170 486
-        C210 510 240 470 285 448
-        C330 425 365 475 410 452
-        C460 425 500 450 560 508" />
-      <path class="thin" d="M58 540
-        C120 500 150 492 194 512
-        C235 532 272 505 310 488
-        C350 470 382 505 430 490
-        C476 476 516 498 548 522" opacity=".80"/>
+    <!-- Sobre con sello -->
+    <g transform="translate(360 640)" opacity=".82">
+      <path class="med" d="M0 0 H190 V120 H0 Z"/>
+      <path class="thin" d="M0 0 L95 70 L190 0" opacity=".9"/>
+      <path class="thin" d="M0 120 L95 60 L190 120" opacity=".55"/>
+      <!-- sello -->
+      <path class="bold" d="M95 78
+        C80 54 52 58 52 80
+        C52 106 76 114 95 132
+        C114 114 138 106 138 80
+        C138 58 110 54 95 78"
+        opacity=".38"/>
     </g>
 
-    <!-- relleno hachurado tenue -->
-    <path d="M40 520
-        C95 470 120 455 170 486
-        C210 510 240 470 285 448
-        C330 425 365 475 410 452
-        C460 425 500 450 560 508
-        L560 610 L40 610 Z" fill="url(#hatch)" opacity=".16"/>
-
-    <!-- lago/río -->
-    <g opacity=".18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-      <path class="thin" d="M120 620
-        C150 598 180 590 216 598
-        C250 606 270 588 300 580
-        C332 572 350 584 378 592
-        C410 600 438 592 476 572" />
-      <path class="thin" d="M126 638
-        C162 616 190 610 222 618
-        C255 626 274 612 304 604
-        C338 596 360 606 386 614
-        C420 622 446 614 468 600" opacity=".85"/>
+    <!-- Rosa minimalista -->
+    <g transform="translate(85 645)" opacity=".85">
+      <path class="med" d="M55 70
+        C38 54 34 38 44 24
+        C56 8 82 16 86 34
+        C90 54 74 68 60 78" />
+      <path class="thin" d="M58 78 C58 112 54 150 48 210" opacity=".85"/>
+      <path class="thin" d="M50 150 C32 142 20 132 12 120" opacity=".7"/>
+      <path class="thin" d="M52 170 C72 160 90 148 104 134" opacity=".7"/>
     </g>
 
-    <!-- árboles mínimos -->
-    <g opacity=".22" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-      <path class="thin" d="M88 588 l0 34" />
-      <path class="thin" d="M88 588 c-12 6-16 18-18 26 c10-5 20-6 28 0 c8-6 18-5 28 0 c-3-10-8-22-20-26" />
-      <path class="thin" d="M520 575 l0 42" />
-      <path class="thin" d="M520 575 c-14 7-18 22-20 32 c12-6 22-7 32 0 c10-7 20-6 32 0 c-4-12-9-27-24-32" />
-    </g>
-
-    <!-- bruma horizontal -->
-    <rect x="56" y="470" width="488" height="190" rx="24" fill="url(#mist)" opacity=".55"/>
-
-    <!-- detalles románticos -->
-    <g opacity=".26" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-      <!-- corazón -->
-      <path class="med" d="M300 624
-        C292 612 272 614 272 632
-        C272 654 300 666 300 666
-        C300 666 328 654 328 632
-        C328 614 308 612 300 624 Z" />
-
-      <!-- cisnes (formando un corazón) -->
-      <path class="thin" d="M235 720
-        C220 710 220 692 236 684
-        C254 674 280 682 288 700
-        C295 718 268 734 235 720" />
-      <path class="thin" d="M365 720
-        C380 710 380 692 364 684
-        C346 674 320 682 312 700
-        C305 718 332 734 365 720" />
-      <path class="thin" d="M268 705
-        C254 682 260 652 282 642
-        C300 634 318 650 305 670
-        C296 684 286 690 280 690" />
-      <path class="thin" d="M332 705
-        C346 682 340 652 318 642
-        C300 634 282 650 295 670
-        C304 684 314 690 320 690" />
-
-      <!-- pareja mínima -->
-      <g opacity=".92">
-        <circle cx="92" cy="702" r="6" class="thin"/>
-        <circle cx="120" cy="704" r="6" class="thin"/>
-        <path class="thin" d="M92 708 l-3 26" />
-        <path class="thin" d="M120 710 l3 26" />
-        <path class="thin" d="M88 722 C98 716 110 716 122 724" />
-        <path class="thin" d="M106 718 l0 18" opacity=".65"/>
-        <path class="thin" d="M106 692
-          C103 688 98 690 98 695
-          C98 701 106 705 106 705
-          C106 705 114 701 114 695
-          C114 690 109 688 106 692 Z" opacity=".55" />
-      </g>
-
-      <!-- globito corazón -->
-      <path class="thin" d="M508 666
-        C503 658 492 660 492 670
-        C492 682 508 690 508 690
-        C508 690 524 682 524 670
-        C524 660 513 658 508 666 Z" opacity=".55"/>
-      <path class="thin" d="M508 690 C506 710 494 726 478 742" opacity=".45"/>
-    </g>
-
+    <!-- Bruma finita para cohesión -->
+    <path d="M36 548 C160 530 250 542 300 566 C360 596 448 600 584 586"
+          stroke="url(#fadeBottom)" stroke-width="14" opacity=".35"/>
   </g>
 </svg>
+
 <div id="paperContent">
             <div id="introTextBlock">
               <div id="introMsg">recuerda que son con mucho cariño</div>
@@ -667,37 +637,27 @@
 
   // Color aleatorio pero estable por semilla (así cada orquídea "nace" con su propio tono)
   const colorFromSeed = (seed)=>{
-    // Mezcla naranja + rosa con toques blancos (estable por semilla)
+    // Mezcla naranja + blanco (estable por semilla)
     let s = (seed >>> 0) || 1;
     const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
 
-    // Alterna entre un rango rosa (330..350°) y uno naranja (18..36°)
-    const pick = rnd();
-    const hDeg = (pick < 0.52)
-      ? lerp(330, 350, rnd())
-      : lerp(18,  36,  rnd());
-
+    // Naranjas cálidos 18..40° (sin rosados)
+    const hDeg = lerp(18, 40, rnd());
     const h   = (hDeg % 360) / 360;
-    const sat = lerp(0.55, 0.82, rnd());
-    const lig = lerp(0.46, 0.62, rnd());
+
+    // Saturación moderada (para que el blanco se note) y luminancia alta
+    const sat = lerp(0.38, 0.70, rnd());
+    const lig = lerp(0.56, 0.74, rnd());
 
     const rgb = hslToRgb(h, sat, lig);
 
-    // “Blush” cálido (coral) para romper el plano
-    const warm  = hslToRgb(lerp(12, 24, rnd())/360, lerp(0.70, 0.92, rnd()), lerp(0.48, 0.60, rnd()));
-    const blush = lerp(0.08, 0.22, rnd());
-
-    const rr = lerp(rgb.r, warm.r, blush);
-    const gg = lerp(rgb.g, warm.g, blush);
-    const bb = lerp(rgb.b, warm.b, blush);
-
-    // Mezcla hacia blanco para “tonos” (pétalos no planos)
-    const w = lerp(0.16, 0.34, rnd());
+    // Empuja hacia blanco para lograr el look “naranja + blanco”
+    const w = lerp(0.18, 0.46, rnd());
 
     return {
-      r: clamp(Math.round(lerp(rr, 255, w)), 40, 255),
-      g: clamp(Math.round(lerp(gg, 255, w)), 30, 255),
-      b: clamp(Math.round(lerp(bb, 255, w)), 40, 255),
+      r: clamp(Math.round(lerp(rgb.r, 255, w)), 60, 255),
+      g: clamp(Math.round(lerp(rgb.g, 255, w)), 55, 255),
+      b: clamp(Math.round(lerp(rgb.b, 255, w)), 55, 255),
     };
   };
 
@@ -4139,21 +4099,21 @@ const neb = (x,y,r, a, cr,cg,cb) => {
       b: Math.round(lerp(a.b,b.b,t))
     });
     const lite = mix(col, {r:255,g:255,b:255}, 0.72);
-    const mid  = mix(col, {r:245,g:238,b:255}, 0.42);
-    const deep = mix(col, {r: 12,g:  8,b: 34}, 0.78);
+    const mid  = mix(col, {r:255,g:244,b:236}, 0.42);
+    const deep = mix(col, {r: 44,g: 22,b: 10}, 0.78);
     const edge = mix(lite, {r:255,g:255,b:255}, 0.72);
 
-    // Toques blancos/lilas (para que el morado tenga “vida” sin verse plano)
-    const frostA = {r:255,g:252,b:255};
-    const frostB = {r:232,g:220,b:255};
+    // Toques blancos/crema (para que el naranja tenga “vida” sin verse plano)
+    const frostA = {r:255,g:252,b:246};
+    const frostB = {r:255,g:238,b:226};
 
-    // garganta/centro: marfil con violeta tenue
-    const throat = mix(frostB, {r:255,g:248,b:255}, 0.62);
-    const throatDeep = mix(deep, {r: 38,g: 12,b: 55}, 0.55);
+    // garganta/centro: marfil con cálido tenue
+    const throat = mix(frostB, {r:255,g:250,b:240}, 0.62);
+    const throatDeep = mix(deep, {r: 92,g: 46,b: 24}, 0.55);
 
-    // labelo (centro) con profundidad (lavanda, sin saturarse)
-    const lipCol  = mix(frostB, {r:250,g:236,b:255}, 0.42);
-    const lipDeep = mix(deep, {r: 58,g: 16,b: 82}, 0.62);
+    // labelo (centro) con profundidad (durazno, sin saturarse)
+    const lipCol  = mix(frostB, {r:255,g:220,b:190}, 0.42);
+    const lipDeep = mix(deep, {r:140,g: 70,b: 38}, 0.62);
 
     const centerY = -h*0.58;
 
@@ -4289,13 +4249,17 @@ const neb = (x,y,r, a, cr,cg,cb) => {
       c2.fill();
       c2.restore();
 
-      // gradiente principal (vertical) - morado con tonos blancos (más realista)
-      const whiteBase = {r:255,g:252,b:255};
+      // gradiente principal (vertical) - naranja con tonos blancos (más realista)
+      const whiteBase = {r:255,g:252,b:246};
 
       // base más profunda, tips más claros
       const base = mix(col, deep, 0.22);
-      const body = mix(col, whiteBase, 0.22 + 0.18*tint);
-      const tip  = mix(col, whiteBase, 0.42 + 0.22*tint);
+      const warm = {r:255,g:150,b:60};
+      // Pétalos superiores (dorsal y sepales traseros): lavado cálido naranja
+      const baseCol = (kind==='dorsal' || (isBack && kind==='sepal')) ? mix(col, warm, 0.58) : col;
+
+      const body = mix(baseCol, whiteBase, 0.22 + 0.18*tint);
+      const tip  = mix(baseCol, whiteBase, 0.42 + 0.22*tint);
       const hi   = mix(body, whiteBase, 0.55);
 
       const g = c2.createLinearGradient(0, 0, 0, tipY);
@@ -4388,7 +4352,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
       c2.fillRect(-wid*1.4, tipY-len*0.25, wid*2.8, len*1.6);
       c2.restore();
 
-      // toques blancos/lilas: aclara bordes y tips (mezcla morado↔blanco)
+      // toques blancos/lilas: aclara bordes y tips (mezcla naranja↔blanco)
       c2.save();
       c2.globalCompositeOperation = 'screen';
       c2.globalAlpha = alpha * (isBack ? 0.030 : 0.085);
