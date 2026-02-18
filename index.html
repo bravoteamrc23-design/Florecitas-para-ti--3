@@ -14,15 +14,21 @@
       --bg3:#151a40;
     }
     *{box-sizing:border-box}
-    html,body{height:100%}
+    html,body{height:100%; overscroll-behavior:none;}
     body{
       margin:0;
       overflow:hidden;
       background: radial-gradient(900px 650px at 50% 10%, var(--bg3), var(--bg2), var(--bg1));
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-    }
+          -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+}
     canvas{position:fixed; inset:0; width:100vw; height:100vh; display:block;}
+
+    @supports(height: 100dvh){
+      canvas{ height:100dvh; }
+    }
 
     #hud{
       position:fixed;
@@ -57,17 +63,22 @@
     #hud{display:none !important;}
   
     /* ===== Intro "carta de amor" (estilo sobre + rosa) ===== */
-    canvas{ opacity:0; filter: blur(8px) saturate(0.90); transition: opacity 1200ms ease, filter 1200ms ease; }
-    canvas.show{ opacity:1; filter:none; }
+    canvas{ will-change: opacity, filter, transform; opacity:0; filter: blur(10px) saturate(0.92); transform: scale(1.02); transition: opacity 1200ms ease, filter 1200ms ease, transform 1200ms ease; }
+    canvas.show{ opacity:1; filter:none; transform: none; }
 
     #introScreen{
       position: fixed;
+      will-change: opacity, transform, filter;
       inset: 0;
       z-index: 9999;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 22px;
+      padding:
+        calc(22px + env(safe-area-inset-top))
+        calc(22px + env(safe-area-inset-right))
+        calc(22px + env(safe-area-inset-bottom))
+        calc(22px + env(safe-area-inset-left));
       overflow: hidden;
       background:
         radial-gradient(1200px 900px at 50% 20%, rgba(255,223,200,0.25), rgba(0,0,0,0) 62%),
@@ -115,7 +126,11 @@
       filter: drop-shadow(0 22px 46px rgba(0,0,0,0.35));
     }
 
-    /* sobre */
+    
+    @supports(height: 100dvh){
+      #loveWrap{ height: min(86dvh, 900px); }
+    }
+/* sobre */
     #envelope{
       position:absolute;
       bottom: 8%;
@@ -156,12 +171,47 @@
     /* carta */
     #letter{
       position:absolute;
+      will-change: transform, opacity, filter;
       top: 6%;
       width: min(560px, 86%);
       height: min(680px, 78%);
       transform: rotate(2deg);
       z-index: 3;
       animation: floatPaper 5.8s ease-in-out infinite;
+    }
+
+
+    /* Transición “pasar página”: la carta sale del sobre y el sello se desvanece */
+    #loveWrap.go #letter{
+      animation: none;
+      transform-origin: 50% 85%;
+      transition: transform 920ms cubic-bezier(.18,.95,.18,1), opacity 920ms ease, filter 920ms ease;
+      filter: blur(0px);
+      opacity: 1;
+    }
+    #loveWrap.go #letter{
+      transform: rotate(10deg) translateY(-170px) scale(0.90);
+      opacity: 0;
+      filter: blur(3px);
+    }
+    #loveWrap.go #envelope{
+      transition: transform 920ms cubic-bezier(.18,.95,.18,1), opacity 920ms ease, filter 920ms ease;
+      transform-origin: 50% 80%;
+      filter: blur(0px);
+    }
+    #loveWrap.go #envelope{
+      transform: rotate(-8deg) translateY(46px) scale(0.985);
+      opacity: 0.88;
+      filter: blur(1px);
+    }
+    #loveWrap.go #rose{
+      transition: transform 920ms cubic-bezier(.18,.95,.18,1), opacity 920ms ease, filter 920ms ease;
+      transform-origin: 50% 50%;
+    }
+    #loveWrap.go #rose{
+      transform: rotate(-18deg) scale(1.18) translateY(18px);
+      opacity: 0;
+      filter: blur(2px);
     }
 
     #letter .paper{
@@ -175,13 +225,58 @@
         radial-gradient(260px 240px at 14% 18%, rgba(150,100,70,0.16), rgba(0,0,0,0) 60%),
         radial-gradient(340px 300px at 82% 12%, rgba(150,100,70,0.14), rgba(0,0,0,0) 60%),
         radial-gradient(520px 380px at 50% 88%, rgba(90,55,40,0.18), rgba(0,0,0,0) 72%),
-        linear-gradient(180deg, #f7ead4 0%, #ecd4b4 56%, #e5c7a5 100%);
+        linear-gradient(180deg, #e3d7c3 0%, #d9c3a6 56%, #d3b798 100%);
       border: none;
       box-shadow:
         0 26px 70px rgba(0,0,0,0.24),
         inset 0 1px 0 rgba(255,255,255,0.72);
+      isolation: isolate;
+      animation: paperPulse 5.2s ease-in-out infinite;
     }
-    /* fibras del papel + líneas suaves */
+
+
+/* brillo suave en la hoja (destello ascendente, estilo “brillo por el tallo”) */
+#letter .paper .paperShimmer{
+  position:absolute;
+  inset:-18%;
+  border-radius: 14px;
+  pointer-events:none;
+  z-index: 0;
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  filter: blur(6px);
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,0.00) 0%,
+      rgba(255,255,255,0.00) 34%,
+      rgba(255,255,255,0.26) 50%,
+      rgba(255,255,255,0.00) 66%,
+      rgba(255,255,255,0.00) 100%);
+  transform: translateY(60%);
+  animation: paperRise 4.6s ease-in-out infinite;
+}
+
+@keyframes paperRise{
+  0%   { transform: translateY(62%); }
+  55%  { transform: translateY(-10%); }
+  100% { transform: translateY(-62%); }
+}
+
+@keyframes paperPulse{
+  0%,100%{
+    box-shadow:
+      0 26px 70px rgba(0,0,0,0.24),
+      inset 0 1px 0 rgba(255,255,255,0.72),
+      0 0 0 rgba(255,220,200,0);
+  }
+  50%{
+    box-shadow:
+      0 26px 70px rgba(0,0,0,0.24),
+      inset 0 1px 0 rgba(255,255,255,0.72),
+      0 0 28px rgba(255,220,200,0.18);
+  }
+}
+/* fibras del papel + líneas suaves */
     #letter .paper::before{
       content:"";
       position:absolute;
@@ -353,6 +448,8 @@
     }
 
     @media (prefers-reduced-motion: reduce){
+      #letter .paper{ animation: none !important; }
+      #letter .paper .paperShimmer{ animation: none !important; opacity: 0 !important; }
       #letter{ animation: none; }
       #introScreen, #introScreen.hide, canvas{ transition: none !important; }
     }
@@ -404,17 +501,56 @@
   
     /* margen doble en toda la hoja (dos líneas tipo papelería) */
 
-</style>
+
+    /* Texto seleccionable dentro de la hoja */
+    #paperContent, #introMsg, #introTitle{
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    #introHint{
+      margin-top: 10px;
+      font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: rgba(55,30,22,0.72);
+      text-align: center;
+    }
+
+    @media (max-width: 420px){
+      #introScreen::after{ opacity: 0.12; }
+      #letter .paper .paperShimmer{ opacity: 0.35; }
+    }
+
+
+    @media (max-height: 700px){
+      #loveWrap{ height: 94vh; }
+      #envelope{ height: 40%; bottom: 6%; }
+      #letter{ top: 4%; height: 80%; }
+    }
+    @supports(height: 100dvh){
+      @media (max-height: 700px){
+        #loveWrap{ height: 94dvh; }
+      }
+    }
+
+    @media (max-width: 360px){
+      #introBtn{ font-size: 17px; padding: 10px 14px; }
+      #rose{ width: 104px; height: 104px; }
+    }
+
+  </style>
 </head>
 <body>
-  <canvas id="c" role="img" aria-label="Animación de un ramo de orquídeas bajo un cielo estrellado con nubes, sol y la constelación de Capricornio y Leo"></canvas>
+  <canvas id="c" role="img" aria-label="Animación de un ramo de orquídeas bajo un cielo estrellado con nubes, luna y la constelación de Capricornio y Leo"></canvas>
 
-  <div id="introScreen" role="dialog" aria-label="Mensaje de inicio">
+  <div id="introScreen" role="dialog" aria-modal="true" aria-labelledby="introTitle" aria-describedby="introMsg">
     <div id="loveWrap">
       <div id="envelope" aria-hidden="true"></div>
 
       <div id="letter" aria-hidden="false">
         <div class="paper">
+
+          <div class="paperShimmer" aria-hidden="true"></div>
+
 
           <svg class="paperFrame" viewBox="0 0 600 800" aria-hidden="true" focusable="false" preserveAspectRatio="none">
             <g>
@@ -520,7 +656,8 @@
               </span></div>
             </div>
 
-            <button id="introBtn" type="button">toca aquí</button>
+            <button id="introBtn" type="button" aria-label="Abrir la carta">Abrir la carta</button>
+            <div id="introHint">Toca el sello o la carta</div>
           </div>
         </div>
       </div>
@@ -539,6 +676,11 @@
   // ===== Intro overlay (móvil + desktop) =====
   const introScreen = document.getElementById('introScreen');
   const introBtn    = document.getElementById('introBtn');
+
+  // Enfoca el botón para accesibilidad/teclado (sin desplazar la vista)
+  requestAnimationFrame(() => {
+    try { introBtn && introBtn.focus({ preventScroll:true }); } catch(_){}
+  });
 
   // Mantén el doodle dentro de márgenes y empezando justo debajo del botón
   const paperEl  = document.querySelector('#letter .paper');
@@ -597,25 +739,31 @@ window.addEventListener('resize', () => requestAnimationFrame(() => { layoutIntr
     _started = true;
 
     // Inicia la “generación” del ramo a partir del toque
-    try{ restartIntro(); }catch(_){}
+    // La retrasamos un poco para que no te pierdas el inicio mientras se desvanece la carta.
+    try{ restartIntro(380); }catch(_){}
 
-    // Transición visual
-    if(introScreen) introScreen.classList.add('hide');
+    // Transición visual (tipo “pasar página”)
+    try{ document.getElementById('loveWrap')?.classList.add('go'); }catch(_){}
     canvas.classList.add('show');
+    if(introScreen) setTimeout(()=>{ try{ introScreen.classList.add('hide'); }catch(_){} }, 180);
 
     // Arranca la animación
     start();
 
     // Limpia overlay al final del fade
-    setTimeout(()=>{ try{ introScreen && introScreen.remove(); }catch(_){ } }, 1250);
+    setTimeout(()=>{ try{ introScreen && introScreen.remove(); }catch(_){} }, 1450);
   }
 
   // En móvil, NO confíes solo en "click". Usa pointer y touch también.
-  const bindStart = (el)=>{
+  const bindStart = (el) => {
     if(!el) return;
-    el.addEventListener('pointerup', startExperience, {passive:true});
-    el.addEventListener('touchend',  startExperience, {passive:true});
-    el.addEventListener('click',     startExperience, {passive:true});
+    const opts = { passive:true, once:true };
+    if (window.PointerEvent) {
+      el.addEventListener('pointerup', startExperience, opts);
+    } else {
+      el.addEventListener('touchend', startExperience, opts);
+      el.addEventListener('click', startExperience, opts);
+    }
   };
   bindStart(introBtn);
 
@@ -674,28 +822,28 @@ window.addEventListener('resize', () => requestAnimationFrame(() => { layoutIntr
       b: Math.round((b1+m)*255)
     };
   }
-// Color estable por semilla (azul cielo difuminado)
+// Color estable por semilla (naranja difuminado)
 // Nota: hslToRgb usa grados y s/l en 0..100
 const colorFromSeed = (seed)=>{
   let s = (seed >>> 0) || 1;
   const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0, s / 4294967296);
 
-  // Azules: 195..212° (cielo)
-  const hDeg = lerp(195, 212, rnd());
+  // Naranjas: 22..38° (cálido)
+  const hDeg = lerp(22, 38, rnd());
 
   // Saturación y luminancia en rangos agradables
-  const satP = lerp(48, 78, rnd());
-  const ligP = lerp(56, 80, rnd());
+  const satP = lerp(55, 88, rnd());
+  const ligP = lerp(52, 78, rnd());
 
   const rgb = hslToRgb(hDeg, satP, ligP);
 
-  // Empuja hacia blanco para que se vea “difuminado”
-  const w = lerp(0.20, 0.55, rnd());
+  // Empuja hacia blanco para que se vea “difuminado” (pastel)
+  const w = lerp(0.22, 0.55, rnd());
 
   return {
-    r: clamp(Math.round(lerp(rgb.r, 255, w)), 50, 255),
-    g: clamp(Math.round(lerp(rgb.g, 255, w)), 80, 255),
-    b: clamp(Math.round(lerp(rgb.b, 255, w)), 110, 255),
+    r: clamp(Math.round(lerp(rgb.r, 255, w)), 120, 255),
+    g: clamp(Math.round(lerp(rgb.g, 255, w)), 70, 255),
+    b: clamp(Math.round(lerp(rgb.b, 255, w)), 25, 220),
   };
 };
 
@@ -708,6 +856,8 @@ const smoothstep = (a,b,x) => {
   const t = clamp((x - a) / Math.max(1e-6, (b - a)), 0, 1);
   return t*t*(3 - 2*t);
 };
+
+const easeOutCubic = (t)=> 1 - Math.pow(1 - clamp(t,0,1), 3);
 
 const cubic = (t, a,b,c,d) => {
   const u = 1 - t;
@@ -863,9 +1013,9 @@ function drawBloomGlow(x, y, col, u, scale){
 
 
 
-function restartIntro(){
+function restartIntro(delayMs=0){
   INTRO.active = true;
-  INTRO.t0 = performance.now();
+  INTRO.t0 = performance.now() + (delayMs||0);
 }
 
 
@@ -903,7 +1053,7 @@ function restartIntro(){
     crownStrength: 0.008,
 
     // Texto “en estrellas”
-    starText: 'Los verdaderos cambios son desde dentro',
+    starText: 'hoy o mañana, pero contigo',
     starTextStrength: 0.95    ,
 
     // Rendimiento / calidad
@@ -3976,7 +4126,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
 
-      drawSun(t);
+      drawMoon(t);
       if(shooting.active) drawShootingStar(t);
       return;
     }
@@ -3993,7 +4143,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     ctx.globalCompositeOperation = 'source-over';
 
     // Sol y fugaces por encima
-    drawSun(t);
+    drawMoon(t);
     maybeStartShootingStar(t);
     drawShootingStar(t);
   }
@@ -4202,20 +4352,17 @@ const neb = (x,y,r, a, cr,cg,cb) => {
     const appear = pv / 6; // 0..1
     const op = clamp(open==null?1:open, 0, 1);
 
-    // Color base pétalos: azul cielo difuminado
-    col = {r:135,g:206,b:235}; // sky blue
-
     const mix = (a,b,t)=>({
       r: Math.round(lerp(a.r,b.r,t)),
       g: Math.round(lerp(a.g,b.g,t)),
       b: Math.round(lerp(a.b,b.b,t))
     });
 
-    // Paleta pétalos: azul cielo + blanco (difuminado, sin tonos morados residuales)
-    const lite = mix(col, {r:255,g:255,b:255}, 0.76);
-    const mid  = mix(col, {r:255,g:255,b:255}, 0.56);
-    const deep = mix(col, {r: 10,g: 32,b: 72}, 0.70);
-    const edge = mix(lite,{r:255,g:255,b:255}, 0.86);
+    // Paleta pétalos: naranja difuminado (cálido, suave)
+    const lite = mix(col, {r:255,g:255,b:255}, 0.72);
+    const mid  = mix(col, {r:255,g:248,b:235}, 0.52);
+    const deep = mix(col, {r:120,g:45,b:10},   0.72);
+    const edge = mix(lite,{r:255,g:252,b:245}, 0.82);
 
     // neutros para micro-variación
     const frostA = {r:255,g:255,b:255};
@@ -4277,7 +4424,7 @@ const neb = (x,y,r, a, cr,cg,cb) => {
 
       // “Tipo” de pieza: dorsal / sepal / petal (variación de redondeo)
       const tipRound = (kind==='petal') ? 0.50 : (kind==='dorsal' ? 0.42 : 0.44);
-      const ruffleAmp = (isBack ? 0.045 : 0.070) * (kind==='petal' ? 1.0 : 0.85);
+      const ruffleAmp = (isBack ? 0.052 : 0.085) * (kind==='petal' ? 1.0 : 0.85);
 
       // Precalcula forma (determinista dentro de esta pieza)
       const tipY = -len;
@@ -4363,18 +4510,23 @@ const neb = (x,y,r, a, cr,cg,cb) => {
       c2.fill();
       c2.restore();
 
-      // gradiente principal (vertical) - azul cielo difuminado (todas las piezas)
-const baseCol = {r:90,g:175,b:255};
+      // gradiente principal (vertical) - naranja difuminado (todas las piezas)
+// (un poco más orgánico: micro-variación por pétalo para que no se vea “plástico uniforme”)
+const j1 = (rndLocal(31) - 0.5) * 2; // -1..1
+const j2 = (rndLocal(32) - 0.5) * 2; // -1..1
 
-const deepR = mix(baseCol, {r:18,g:56,b:122}, 0.72);
-const body  = mix(baseCol, {r:190,g:232,b:255}, 0.30 + 0.10*tint);
-const tip   = mix(baseCol, {r:245,g:253,b:255}, 0.52 + 0.12*tint);
-const hi    = mix(body,    {r:255,g:255,b:255}, 0.34);
+const baseT = clamp(0.12 + 0.08*tint + 0.03*j1, 0.08, 0.28);
+const baseCol = mix(col, {r:255,g:255,b:255}, baseT);
+
+const deepR = mix(baseCol, {r:145,g:60,b:14}, clamp(0.66 + 0.06*j2, 0.56, 0.78));
+const body  = mix(baseCol, {r:255,g:255,b:255}, clamp(0.34 + 0.10*tint, 0.30, 0.52));
+const tip   = mix(baseCol, {r:255,g:255,b:255}, clamp(0.64 + 0.12*tint, 0.56, 0.86));
+const hi    = mix(body,    {r:255,g:255,b:255}, 0.42);
 
       // capa difuminada para “bloom” suave (sin filtros pesados)
       c2.save();
       c2.globalAlpha = alpha * (isBack ? 0.34 : 0.42);
-      c2.shadowColor = 'rgba(90,170,255,0.32)';
+      c2.shadowColor = 'rgba(255,165,70,0.30)';
       c2.shadowBlur  = wid * (isBack ? 0.10 : 0.14);
       c2.fillStyle   = rgba(baseCol.r, baseCol.g, baseCol.b, 0.40);
       path();
@@ -4584,6 +4736,51 @@ const hi    = mix(body,    {r:255,g:255,b:255}, 0.34);
         c2.beginPath();
         c2.moveTo(o*0.10, -len*0.02);
         c2.quadraticCurveTo(o*0.55, -len*(0.34 + 0.04*rnd()), o*0.04, -len*0.92);
+        c2.stroke();
+      }
+
+      c2.restore();
+
+      // micro-fibras (textura cerosa): muy sutiles, siguen el crecimiento del pétalo
+      c2.save();
+      path();
+      c2.clip();
+
+      const fibN = isBack ? 6 : 10;
+
+      // sombra de fibras (profundidad)
+      c2.globalCompositeOperation = 'multiply';
+      c2.globalAlpha = alpha * (isBack ? 0.010 : 0.020);
+      c2.strokeStyle = 'rgba(0,0,0,0.22)';
+      c2.lineWidth = Math.max(0.30, wid*0.012);
+      c2.lineCap = 'round';
+      c2.lineJoin = 'round';
+
+      for(let i=0;i<fibN;i++){
+        const tt = (i-(fibN-1)/2) / ((fibN-1)/2);
+        const x = tt * wid*(0.22 + 0.05*rndLocal(40+i));
+        const bend = wid*(0.06 + 0.03*rndLocal(60+i)) * (0.8 + 0.7*Math.abs(tt));
+        const yMid = -len*(0.42 + 0.07*rndLocal(80+i));
+        c2.beginPath();
+        c2.moveTo(x*0.10, -len*0.06);
+        c2.quadraticCurveTo(x + (tt>=0?1:-1)*bend, yMid, x*0.06, -len*(0.95 + 0.02*rndLocal(100+i)));
+        c2.stroke();
+      }
+
+      // luz de fibras (brillo “ceroso”)
+      c2.globalCompositeOperation = 'screen';
+      c2.globalAlpha = alpha * (isBack ? 0.012 : 0.026);
+      c2.strokeStyle = 'rgba(255,255,255,0.20)';
+      c2.lineWidth = Math.max(0.25, wid*0.010);
+
+      for(let i=0;i<fibN;i++){
+        const tt = (i-(fibN-1)/2) / ((fibN-1)/2);
+        const x = tt * wid*(0.20 + 0.04*rndLocal(140+i));
+        const bend = wid*(0.05 + 0.03*rndLocal(160+i)) * (0.7 + 0.6*Math.abs(tt));
+        const yMid = -len*(0.40 + 0.06*rndLocal(180+i));
+        c2.beginPath();
+        c2.moveTo(x*0.10, -len*0.08);
+        c2.quadraticCurveTo(x + (tt>=0?1:-1)*bend*0.85, yMid, x*0.04, -len*(0.96 + 0.02*rndLocal(200+i)));
         c2.stroke();
       }
 
@@ -4920,9 +5117,9 @@ function renderTulipBloomSprite(c2, w, h, col, seed, open, petalsVisible){
 
     // Paleta del pétalo (base -> cuerpo -> punta)
     const lite = mix(col, {r:255,g:255,b:255}, 0.50);
-    const mid  = mix(col, {r:245,g:250,b:255}, 0.24);
-    const deep = mix(col, {r:2,g:8,b:24},      0.58);
-    const edge = mix(col, {r:245,g:250,b:255},  0.18);
+    const mid  = mix(col, {r:255,g:248,b:236}, 0.24);
+    const deep = mix(col, {r:60,g:18,b:8},      0.62);
+    const edge = mix(col, {r:255,g:252,b:245},  0.18);
 
     const centerY = -h*0.62;
 
@@ -5160,7 +5357,7 @@ function renderTulipBloomSprite(c2, w, h, col, seed, open, petalsVisible){
     // Corona interna (pétalos cortos)
     const crownAppear = clamp((appear - 0.30) * 1.6, 0, 1);
     if(crownAppear > 0){
-      const crownCol  = mix(col, {r:240,g:246,b:255}, 0.38);
+      const crownCol  = mix(col, {r:255,g:246,b:230}, 0.38);
       const crownLite = mix(crownCol, {r:255,g:255,b:255}, 0.58);
       const crownDeep = mix(crownCol, {r:40,g:20,b:30}, 0.46);
 
@@ -5755,7 +5952,9 @@ function renderTulipBloomSprite(c2, w, h, col, seed, open, petalsVisible){
         twist,
         seed,
         col: colorFromSeed(seed),
-        open
+        open,
+        introStart: (i * 0.052) + rnd()*0.026,
+        introSpan:  (0.70 + rnd()*0.12)
       };
     });
   }
@@ -5825,14 +6024,15 @@ const STEM = {r:55,g:155,b:92};
     for(const f of order){
       let uGen=1, stemU=1, leafU=1, bloomU=1, petals=6;
       if(introActive){
-        const start = f.i * 0.055;
-        const span  = 0.72;
+        const start = (f.introStart ?? (f.i * 0.055));
+        const span  = (f.introSpan  ?? 0.72);
         uGen   = clamp((master - start) / span, 0, 1);
         stemU  = smoothstep(0.00, 0.56, uGen);
         leafU  = smoothstep(0.18, 0.78, uGen);
         bloomU = smoothstep(0.56, 1.00, uGen);
-        const pU = smoothstep(0.60, 1.00, uGen);
-        petals = clamp(Math.floor(pU*6 + 0.001), 0, 6);
+        const pU = smoothstep(0.58, 1.00, uGen);
+        // Pétalos en continuo (0..6). getBloomSprite ya cuantiza a pasos finos.
+        petals = clamp(easeOutCubic(pU) * 6, 0, 6);
       }
 
       const sway = (CONFIG.reduceMotion && !CONFIG.forceFlowerMotion) ? 0 : (gw*0.22 + Math.sin(t*0.001 + f.phase) * 0.08 * CONFIG.sway);
@@ -5966,8 +6166,16 @@ const STEM = {r:55,g:155,b:92};
       f.angle = angle + f.twist;
       f._bloomU = bloomU;
       f._petals = petals;
-      f._bloomScale = introActive ? lerp(0.18, 1.0, bloomU) : 1;
-      f._openNow = introActive ? (Math.round(lerp(0.86, f.open, bloomU)*20)/20) : f.open;
+      f._bloomScale = introActive ? lerp(0.10, 1.0, easeOutCubic(bloomU)) : 1;
+      // Apertura por “etapas” (3 estados) para evitar re-generar sprites cada frame.
+      if(introActive){
+        const oU = smoothstep(0.52, 1.00, uGen);
+        let o = (oU < 0.33) ? 0.78 : (oU < 0.66 ? 0.90 : f.open);
+        if(o > f.open) o = f.open;
+        f._openNow = o;
+      }else{
+        f._openNow = f.open;
+      }
     }
 
     
@@ -6183,9 +6391,23 @@ for(const f of bloomOrder){
 
 
   function resize(){
-    DPR = Math.min(CONFIG.dprCap || 1.8, window.devicePixelRatio || 1);
-    W = Math.floor(window.innerWidth);
-    H = Math.floor(window.innerHeight);
+    const vv = window.visualViewport;
+    W = Math.floor(vv ? vv.width  : window.innerWidth);
+    H = Math.floor(vv ? vv.height : window.innerHeight);
+
+    const isSmall = Math.min(W, H) < 420;
+
+    // Auto-tune a couple settings for small screens
+    if(CONFIG._baseStars == null) CONFIG._baseStars = CONFIG.stars;
+    if(CONFIG._baseTwinkle == null) CONFIG._baseTwinkle = CONFIG.twinkle;
+
+    const area = W * H;
+    const desiredStars = Math.max(180, Math.min(360, Math.round(area / 3500)));
+    CONFIG.stars = desiredStars;
+    CONFIG.twinkle = isSmall ? Math.min(CONFIG._baseTwinkle, 0.75) : CONFIG._baseTwinkle;
+
+    const cap = isSmall ? Math.min(CONFIG.dprCap || 1.8, 1.5) : (CONFIG.dprCap || 1.8);
+    DPR = Math.min(cap, window.devicePixelRatio || 1);
 
     canvas.width  = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
@@ -6219,6 +6441,11 @@ rebuildBouquetShadeCache();
     _resizeRaf = requestAnimationFrame(()=>{ _resizeRaf = 0; resize(); });
   }
   window.addEventListener('resize', requestResize, {passive:true});
+
+  if (window.visualViewport){
+    window.visualViewport.addEventListener('resize', requestResize, {passive:true});
+    window.visualViewport.addEventListener('scroll', requestResize, {passive:true});
+  }
 
   canvas.addEventListener('pointerdown', (e) => {
     const r = canvas.getBoundingClientRect();
