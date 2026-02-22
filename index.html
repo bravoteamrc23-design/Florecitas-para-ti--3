@@ -6369,7 +6369,9 @@ function renderTulipBloomSprite(c2, w, h, col, seed, open, petalsVisible){
   function seedBouquet(){
     const cx = W*0.5;
     // Un pelín más abajo para que en móviles no “tope” arriba y se sienta centrado.
-    const baseY = H*0.935;
+    const baseY = H*0.955;
+
+    // Ajuste: bajar el ramo para no tapar el mensaje (especialmente en móvil).
 
     // Escala un poquito más generosa (sin pasarse) para que el ramo se vea “presente”.
     const scaleBase = lerp(0.74, 1.14, clamp(Math.min(W, H)/820, 0, 1));
@@ -6385,8 +6387,8 @@ function renderTulipBloomSprite(c2, w, h, col, seed, open, petalsVisible){
       const scale = scaleBase * p.bs;
 
       // Variación real (pero estable) por flor
-      const bw = (34 + rnd()*8) * scale;
-      const bh = (78 + rnd()*14) * scale;
+      const bw = (33 + rnd()*7) * scale;
+      const bh = (70 + rnd()*12) * scale;
 
       // Inclinación: composición + micro azar (para que no parezcan clones)
       const twist = p.dx * 0.10 + (rnd()*2 - 1) * 0.06;
@@ -6399,7 +6401,7 @@ function renderTulipBloomSprite(c2, w, h, col, seed, open, petalsVisible){
         x: cx + p.dx*spread,
         baseY,
         scale,
-        height: (242 * scaleBase) * p.hf * (0.94 + rnd()*0.10),
+        height: (200 * scaleBase) * p.hf * (0.94 + rnd()*0.10),
         phase: i*0.83 + rnd()*0.35,
         bw, bh,
         twist,
@@ -6779,7 +6781,7 @@ for(const f of bloomOrder){
       ctx.restore();
     }
 
-    const knotX = W*0.5, knotY = H*0.935;
+    const knotX = W*0.5, knotY = H*0.955;
     ctx.save();
     ctx.globalAlpha *= (introActive ? wrapAlpha : 1);
     // Sombra más suave bajo el nudo/envoltura (evita la “línea negra”)
