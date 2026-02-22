@@ -1416,6 +1416,8 @@ window.addEventListener('keydown', (e) => {
   const textStars = [];
   const tapSparkles = [];
 
+  let textLayout = null; // layout del mensaje en estrellas (para legibilidad en móvil)
+
   // Luz “luna” coherente (arriba-derecha)
   const LIGHT = { x:0.18, y:0.14 };
   const LIGHT_DIR = (() => {
@@ -3091,13 +3093,13 @@ function drawSun(t){
       ctx.restore();
     }
   }
-
   // ===== Texto hecho con estrellas =====
   function buildStarText(){
     textStars.length = 0;
+    textLayout = null;
 
     const sMin = Math.min(W, H);
-    let fontSize = clamp(sMin * 0.09, 26, 58);
+    let fontSize = clamp(sMin * 0.092, 26, 62);
 
     const tc = document.createElement('canvas');
     tc.width = Math.floor(W);
@@ -3105,41 +3107,119 @@ function drawSun(t){
     const g = tc.getContext('2d', {alpha:true});
 
     const x = tc.width * 0.5;
-    const y = tc.height * 0.28;
+    const yCenter = tc.height * 0.28;
+
+    const family = 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
+    const maxW = tc.width * 0.86;
+    const maxLines = (Math.min(W,H) < 520) ? 3 : 2;
+
+    const wrapLines = (txt) => {
+      const words = String(txt ?? '').trim().split(/\s+/).filter(Boolean);
+      if(!words.length) return [''];
+      const lines = [];
+      let cur = '';
+      for(const w of words){
+        const test = cur ? (cur + ' ' + w) : w;
+        if(!cur || g.measureText(test).width <= maxW){
+          cur = test;
+        }else{
+          lines.push(cur);
+          cur = w;
+        }
+      }
+      if(cur) lines.push(cur);
+      return lines;
+    };
+
+    let lines = [CONFIG.starText];
+    let lineHeight = fontSize * 1.15;
+
+    // Ajusta tamaño y/o wrap para que NO se haga microscópico en móvil
+    for(let it=0; it<10; it++){
+      g.font = `700 ${Math.round(fontSize)}px ${family}`;
+      lines = wrapLines(CONFIG.starText);
+
+      // Si se pasó de líneas, reducimos fuente y reintentamos
+      if(lines.length > maxLines){
+        fontSize *= 0.90;
+        lineHeight = fontSize * 1.15;
+        continue;
+      }
+
+      // Verifica el peor ancho
+      let worst = 0;
+      for(const ln of lines) worst = Math.max(worst, g.measureText(ln).width);
+
+      if(worst > maxW){
+        fontSize *= Math.max(0.86, maxW / Math.max(1, worst));
+        lineHeight = fontSize * 1.15;
+        continue;
+      }
+      break;
+    }
+
+    // Si aún sobra una línea, recorta suavemente (último recurso)
+    if(lines.length > maxLines) lines = lines.slice(0, maxLines);
 
     g.clearRect(0,0,tc.width,tc.height);
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.font = `700 ${Math.round(fontSize)}px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+    g.font = `700 ${Math.round(fontSize)}px ${family}`;
 
-    const maxW = tc.width * 0.92;
-    const mt = g.measureText(CONFIG.starText);
-    if(mt.width > maxW){
-      fontSize = clamp(fontSize * (maxW / mt.width), 18, fontSize);
-      g.font = `700 ${Math.round(fontSize)}px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+    // centra el bloque de líneas alrededor de yCenter
+    lineHeight = fontSize * 1.15;
+    const y0 = yCenter - (lines.length - 1) * lineHeight * 0.5;
+
+    // pinta texto sólido en el canvas auxiliar (de aquí sacamos puntos)
+    g.fillStyle = 'rgba(255,255,255,1)';
+    let maxLineW = 0;
+    for(let i=0;i<lines.length;i++){
+      const yy = y0 + i*lineHeight;
+      g.fillText(lines[i], x, yy);
+      maxLineW = Math.max(maxLineW, g.measureText(lines[i]).width);
     }
 
-    g.fillStyle = 'rgba(255,255,255,1)';
-    g.fillText(CONFIG.starText, x, y);
+    // Guarda layout para backdrop y móvil
+    const bounds = {
+      l: (x - maxLineW/2) / tc.width,
+      r: (x + maxLineW/2) / tc.width,
+      t: (y0 - lineHeight*0.58) / tc.height,
+      b: (y0 + (lines.length-1)*lineHeight + lineHeight*0.58) / tc.height
+    };
+    textLayout = {
+      x: x/tc.width,
+      yCenter: yCenter/tc.height,
+      y0: y0/tc.height,
+      fontSize,
+      lineHeight,
+      lines,
+      maxLineW: maxLineW/tc.width,
+      bounds
+    };
 
     const img = g.getImageData(0,0,tc.width,tc.height).data;
 
-    const step = clamp(Math.round(fontSize / 7.2), 3, 7);
-    const maxPts = clamp(Math.floor((W*H)/1300), 700, 1700);
+    // Más densidad en móvil para que las letras se lean
+    const isSmall = Math.min(W,H) < 520;
+    const step = clamp(Math.round(fontSize / (isSmall ? 10.2 : 9.2)), 2, 6);
+    const maxPts = clamp(Math.floor((W*H) / (isSmall ? 980 : 1250)), 1100, isSmall ? 3200 : 2400);
 
     const pr = makePRNG((W*73856093) ^ (H*19349663) ^ 0xC0FFEE);
 
-    const minX = Math.max(0, Math.floor(x - tc.width*0.45));
-    const maxX = Math.min(tc.width-1, Math.floor(x + tc.width*0.45));
-    const minY = Math.max(0, Math.floor(y - fontSize*1.2));
-    const maxY = Math.min(tc.height-1, Math.floor(y + fontSize*1.0));
+    // Región de búsqueda acotada al bloque de texto (más eficiente + menos ruido)
+    const padX = fontSize * 1.15;
+    const padY = fontSize * 1.00;
+    const left  = clamp((x - maxLineW/2 - padX), 0, tc.width-1);
+    const right = clamp((x + maxLineW/2 + padX), 0, tc.width-1);
+    const top   = clamp((y0 - padY), 0, tc.height-1);
+    const bot   = clamp((y0 + (lines.length-1)*lineHeight + padY), 0, tc.height-1);
 
     const candidates = [];
-    for(let yy=minY; yy<=maxY; yy+=step){
-      for(let xx=minX; xx<=maxX; xx+=step){
+    for(let yy=Math.floor(top); yy<=Math.floor(bot); yy+=step){
+      for(let xx=Math.floor(left); xx<=Math.floor(right); xx+=step){
         const idx = (yy*tc.width + xx)*4 + 3;
         const a = img[idx];
-        if(a > 20){
+        if(a > 14){
           candidates.push({x: xx/tc.width, y: yy/tc.height, a: a/255});
         }
       }
@@ -3150,13 +3230,14 @@ function drawSun(t){
 
     for(const p of chosen){
       const sizeJ = pr();
-      const r = (0.65 + sizeJ*1.25) * (fontSize/46);
-      const alpha = (0.10 + p.a*0.35) * CONFIG.starTextStrength;
+      const r = (0.70 + sizeJ*1.35) * (fontSize/46);
+      const alpha = (0.14 + p.a*0.40) * CONFIG.starTextStrength;
 
+      // Color: mayormente blanco, algunas estrellas frías (teal) para estética
       const temp = pr();
       let hue = 0;
-      if(temp < 0.20) hue = 205 + pr()*30;
-      else if(temp < 0.28) hue = 35 + pr()*16;
+      if(temp < 0.24) hue = 185 + pr()*28;
+      else if(temp < 0.30) hue = 205 + pr()*22;
 
       textStars.push({
         x: p.x, y: p.y,
@@ -3169,21 +3250,16 @@ function drawSun(t){
       });
     }
 
-
-    // Corazón hecho con estrellas (en lugar de "<3")
-    // Se coloca ARRIBA del texto para que no compita con la lectura.
+    // Corazón hecho con estrellas (arriba del bloque de texto)
     {
-      const mtW = g.measureText(CONFIG.starText).width;
       const heartScale = fontSize * 0.42;
-
-      // centrado sobre el mensaje
       const hx = clamp(x, heartScale*1.15, tc.width - heartScale*1.15);
-      const hy = clamp(y - fontSize*0.95, heartScale*1.20, tc.height*0.55);
+      const hy = clamp((y0 - fontSize*1.00), heartScale*1.20, tc.height*0.55);
 
       const pushStar = (px, py, sizeMul, aMul)=>{
         const r = (0.62 + pr()*1.15) * (fontSize/46) * sizeMul;
         const alpha = (0.12 + pr()*0.22) * CONFIG.starTextStrength * aMul;
-        const hue = 335 + pr()*22; // rosa cálido
+        const hue = 335 + pr()*22;
         textStars.push({
           x: px, y: py,
           r,
@@ -3195,7 +3271,6 @@ function drawSun(t){
         });
       };
 
-      // curva paramétrica de corazón
       const N = 180;
       const curve = [];
       for(let i=0;i<N;i++){
@@ -3205,7 +3280,6 @@ function drawSun(t){
         curve.push({ x: sx/18, y: -sy/18 });
       }
 
-      // contorno
       for(let i=0;i<curve.length;i+=2){
         const p = curve[i];
         const jx = (pr()*2-1) * 0.025;
@@ -3215,11 +3289,10 @@ function drawSun(t){
         pushStar(nx, ny, 0.95, 1.05);
       }
 
-      // relleno (muestra puntos “hacia adentro” desde la curva)
       const fillN = 110;
       for(let i=0;i<fillN;i++){
         const p = curve[(pr()*curve.length)|0];
-        const f = Math.pow(pr(), 0.65); // concentra hacia el interior
+        const f = Math.pow(pr(), 0.65);
         const jx = (pr()*2-1) * 0.020;
         const jy = (pr()*2-1) * 0.020;
         const nx = (hx + (p.x*f + jx)*heartScale) / tc.width;
@@ -3228,22 +3301,21 @@ function drawSun(t){
       }
     }
 
-    // halo disperso alrededor del texto: suaviza bordes y lo integra al cielo
-    const haloBudget = Math.min(28, Math.max(10, Math.floor(textStars.length * 0.20)));
+    // Halo discreto (suaviza bordes)
+    const haloBudget = Math.min(34, Math.max(12, Math.floor(textStars.length * 0.20)));
     for(let i=0;i<haloBudget;i++){
       const b = textStars[(Math.random()*textStars.length)|0];
-      const hx = clamp(b.x + (Math.random()*2-1)*0.032, 0.02, 0.98);
+      const hx = clamp(b.x + (Math.random()*2-1)*0.030, 0.02, 0.98);
       const hy = clamp(b.y + (Math.random()*2-1)*0.020, 0.02, 0.60);
 
       textStars.push({
         x: hx, y: hy,
-        r: b.r * (0.55 + Math.random()*0.25),
-        a: b.a * (0.22 + Math.random()*0.18),
-        tw: b.tw * (0.65 + Math.random()*0.25),
+        r: b.r * (0.58 + Math.random()*0.26),
+        a: b.a * (0.22 + Math.random()*0.20),
+        tw: b.tw * (0.70 + Math.random()*0.25),
         p: Math.random()*TAU*3
       });
     }
-
   }
 
   function drawStarText(t){
@@ -3408,9 +3480,74 @@ function drawSun(t){
     const gx = W*0.5, gy = H*0.28;
     const fontHint = clamp(Math.min(W,H)*0.09, 26, 58);
 
+    // Backdrop principal: panel suave (tipo glass) detrás del mensaje
+    const rrPath = (x,y,w,h,r)=>{
+      r = Math.max(6, Math.min(r, Math.min(w,h)/2));
+      g.beginPath();
+      g.moveTo(x+r, y);
+      g.arcTo(x+w, y,   x+w, y+h, r);
+      g.arcTo(x+w, y+h, x,   y+h, r);
+      g.arcTo(x,   y+h, x,   y,   r);
+      g.arcTo(x,   y,   x+w, y,   r);
+      g.closePath();
+    };
+
+    const b = (textLayout && textLayout.bounds) ? textLayout.bounds : {l:0.18,r:0.82,t:0.22,b:0.34};
+    const l = b.l*W, r = b.r*W, t = b.t*H, bb = b.b*H;
+    const padX = fontHint*0.72;
+    const padY = fontHint*0.50;
+    const px = clamp(l - padX, 14, W-14);
+    const py = clamp(t - padY, 14, H-14);
+    const pw = clamp((r - l) + padX*2, 180, W - px - 14);
+    const ph = clamp((bb - t) + padY*2, fontHint*1.3, H - py - 14);
+    const radius = fontHint*0.62;
+
+    // Capa blur (solo una vez, está cacheada)
+    g.save();
+    g.filter = `blur(${Math.round(fontHint*0.34)}px)`;
+    g.globalAlpha = 0.92;
+    rrPath(px, py, pw, ph, radius);
+    g.fillStyle = 'rgba(0,0,0,0.34)';
+    g.fill();
+    g.restore();
+
+    // Capa nítida con gradiente
+    g.save();
+    rrPath(px, py, pw, ph, radius);
+    const pane = g.createLinearGradient(0, py, 0, py+ph);
+    pane.addColorStop(0, 'rgba(12,14,22,0.46)');
+    pane.addColorStop(1, 'rgba(6,8,14,0.22)');
+    g.fillStyle = pane;
+    g.fill();
+    // highlight superior mínimo
+    g.globalCompositeOperation = 'screen';
+    g.globalAlpha = 0.10;
+    rrPath(px+1, py+1, pw-2, ph*0.55, radius*0.92);
+    g.fillStyle = 'rgba(210,235,255,0.20)';
+    g.fill();
+    g.restore();
+
+    // Texto fantasma MUY sutil (rellena huecos entre estrellas y ayuda en móvil)
+    if(textLayout && textLayout.lines && textLayout.lines.length){
+      const family = 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
+      g.save();
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.font = `700 ${Math.round(textLayout.fontSize)}px ${family}`;
+      g.fillStyle = 'rgba(255,255,255,0.095)';
+      g.shadowColor = 'rgba(255,255,255,0.22)';
+      g.shadowBlur = 7;
+      const y0 = textLayout.y0*H;
+      for(let i=0;i<textLayout.lines.length;i++){
+        g.fillText(textLayout.lines[i], gx, y0 + i*(textLayout.lineHeight));
+      }
+      g.restore();
+    }
+
+    // Glow ambiental para integrarlo al cielo
     const bg = g.createRadialGradient(gx, gy, 0, gx, gy, fontHint*3.2);
-    bg.addColorStop(0.0, 'rgba(0,0,0,0.34)');
-    bg.addColorStop(0.55,'rgba(0,0,0,0.12)');
+    bg.addColorStop(0.0, 'rgba(0,0,0,0.26)');
+    bg.addColorStop(0.55,'rgba(0,0,0,0.10)');
     bg.addColorStop(1.0, 'rgba(0,0,0,0)');
     g.fillStyle = bg;
     g.fillRect(0,0,W,H);
@@ -3493,8 +3630,9 @@ function drawSun(t){
       g.globalCompositeOperation = 'screen';
 
       for(const st of textStars){
-        const tw = CONFIG.reduceMotion ? 1 : (0.78 + 0.22*Math.sin(t*0.0012*st.s + st.p));
-        const alpha = clamp(st.a * (0.95 + 0.85*tw), 0, 1);
+        // Menos parpadeo para legibilidad (especialmente en móvil)
+        const tw = CONFIG.reduceMotion ? 1 : (0.94 + 0.06*Math.sin(t*0.0010*st.s + st.p));
+        const alpha = clamp(st.a * (0.92 + 0.35*tw), 0, 1);
 
         const x = st.x*W;
         const y = st.y*H;
