@@ -574,10 +574,11 @@
     /* Paisaje tenue dentro de los márgenes (primera hoja) */
     .paperLandscape{
       position:absolute;
-      left: calc(var(--framePad) + 6px);
-      right: calc(var(--framePad) + 6px);
-      bottom: 92px;
-      height: 220px;
+      /* más adentro para que el dibujo no toque el marco */
+      left: calc(var(--framePad) + 20px);
+      right: calc(var(--framePad) + 20px);
+      bottom: 96px;
+      height: 210px;
       z-index: 1;
       pointer-events:none;
       opacity: 0.26;
@@ -602,7 +603,7 @@
       opacity: 0.70;
     }
     @media (max-width: 420px){
-      .paperLandscape{ bottom: 88px; height: 190px; opacity: 0.20; }
+      .paperLandscape{ bottom: 92px; height: 178px; opacity: 0.20; }
     }
 
 /* margen doble en toda la hoja (dos líneas tipo papelería) */
@@ -1214,10 +1215,13 @@ function restartIntro(delayMs=0){
     crownStrength: 0.008,
 
     // Texto “en estrellas”
-    starText: 'espero y hayas tenido un bonito día, amore mio',
+    starText: 'Disfruta tu noche, preciosa',
     starTextStrength: 0.95    ,
 
-    // Rendimiento / calidad
+    
+    starTextGlyph: 'o',
+    starGlyphFont: "Georgia, 'Times New Roman', serif",
+// Rendimiento / calidad
     maxFPS: 60,
     dprCap: 1.8,
     grassAnimFactor: 1.0,
@@ -1416,13 +1420,48 @@ window.addEventListener('keydown', (e) => {
   const textStars = [];
   const tapSparkles = [];
 
+  // ---- Sprites para "letras-estrellas" (más legible que puntitos)
+  const glyphCache = new Map();
+  function getGlyphSprite(r){
+    // tamaño del glifo en px (caché por talla)
+    const s = Math.round(clamp(r*7.0, 9, 18));
+    if(glyphCache.has(s)) return glyphCache.get(s);
+
+    const pad = Math.max(5, Math.round(s*0.55));
+    const c = document.createElement('canvas');
+    c.width  = s + pad*2;
+    c.height = s + pad*2;
+
+    const g = c.getContext('2d', {alpha:true});
+    g.clearRect(0,0,c.width,c.height);
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = `700 ${s}px ${CONFIG.starGlyphFont}`;
+    g.fillStyle = 'rgba(255,255,255,0.92)';
+    g.shadowColor = 'rgba(255,255,255,0.55)';
+    g.shadowBlur = Math.max(2, s*0.28);
+    g.fillText(CONFIG.starTextGlyph, c.width/2, c.height/2 + 0.5);
+
+    // mini-contraste (muy sutil) para que no se pierda en nubes claras
+    g.shadowBlur = 0;
+    g.globalCompositeOperation = 'multiply';
+    g.fillStyle = 'rgba(0,0,0,0.10)';
+    g.fillText(CONFIG.starTextGlyph, c.width/2 + 0.6, c.height/2 + 0.8);
+    g.globalCompositeOperation = 'source-over';
+
+    const spr = { c, w:c.width, h:c.height };
+    glyphCache.set(s, spr);
+    return spr;
+  }
+
+
   let textLayout = null; // layout del mensaje en estrellas (para legibilidad en móvil)
 
   // Luz “luna” coherente (arriba-derecha)
   const LIGHT = { x:0.18, y:0.14 };
   const SCENE = {
     // Posiciones normalizadas (0..1) para que en móvil/desktop la composición respire
-    msgY: 0.265,          // bloque del mensaje (texto de estrellas)
+    msgY: 0.305,          // bloque del mensaje (texto de estrellas)
     bouquetBaseY: 0.985,  // ancla del ramo (más abajo)
   };
 
@@ -3237,7 +3276,7 @@ function drawSun(t){
     for(const p of chosen){
       const sizeJ = pr();
       const r = (0.70 + sizeJ*1.35) * (fontSize/46);
-      const alpha = (0.14 + p.a*0.40) * CONFIG.starTextStrength;
+      const alpha = (0.20 + p.a*0.50) * CONFIG.starTextStrength;
 
       // Color: mayormente blanco, algunas estrellas frías (teal) para estética
       const temp = pr();
@@ -3260,7 +3299,7 @@ function drawSun(t){
     {
       const heartScale = fontSize * 0.42;
       const hx = clamp(x, heartScale*1.15, tc.width - heartScale*1.15);
-      const hy = clamp((y0 - fontSize*1.00), heartScale*1.20, tc.height*0.55);
+      const hy = clamp((y0 - fontSize*0.65), heartScale*1.20, tc.height*0.62);
 
       const pushStar = (px, py, sizeMul, aMul)=>{
         const r = (0.62 + pr()*1.15) * (fontSize/46) * sizeMul;
@@ -3336,7 +3375,7 @@ function drawSun(t){
     // Bruma clara muy sutil detrás del mensaje (sin panel oscuro)
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = 0.11;
+    ctx.globalAlpha = 0.14;
     const haze = ctx.createRadialGradient(gx, gy, 0, gx, gy, fontHint*3.4);
     haze.addColorStop(0.0, 'rgba(235,245,255,0.10)');
     haze.addColorStop(0.45,'rgba(205,230,255,0.05)');
@@ -3365,21 +3404,20 @@ const glow = ctx.createRadialGradient(gx, gy, 10, gx, gy, fontHint*7.5);
       // Sombra/contorno sutil para contraste (sobre nubes claras)
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
-      ctx.globalAlpha = alpha * 0.18;
+      ctx.globalAlpha = alpha * 0.26;
       ctx.fillStyle = 'rgba(0,0,0,0.85)';
       ctx.beginPath();
-      ctx.arc(x, y, st.r*1.55, 0, TAU);
+      ctx.arc(x, y, st.r*1.80, 0, TAU);
       ctx.fill();
       ctx.restore();
 
 
 
-      ctx.fillStyle = st.hue ? `hsla(${st.hue}, 75%, 92%, 1)` : 'rgba(255,255,255,1)';
-      ctx.beginPath();
-      ctx.arc(x, y, st.r, 0, TAU);
-      ctx.fill();
+            // En vez de puntitos: glifo blanco sutil (más legible)
+      const spr = getGlyphSprite(st.r);
+      ctx.drawImage(spr.c, x - spr.w*0.5, y - spr.h*0.5);
 
-      if(st.flare){
+if(st.flare){
         ctx.save();
         ctx.shadowBlur = 0;
         ctx.globalCompositeOperation = 'lighter';
